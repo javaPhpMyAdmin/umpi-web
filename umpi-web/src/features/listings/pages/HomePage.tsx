@@ -6,7 +6,8 @@ import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import FeaturedCard from '../../../components/ui/FeaturedCard'
 import ProductCard from '../../../components/ui/ProductCard'
-import HomePageSkeleton from '../../../components/ui/skeletons/HomePageSkeleton'
+import FeaturedCardSkeleton from '../../../components/ui/skeletons/FeaturedCardSkeleton'
+import ProductCardSkeleton from '../../../components/ui/skeletons/ProductCardSkeleton'
 
 const iconMap: Record<string, string> = {
   Car: 'directions_car',
@@ -51,71 +52,90 @@ export default function HomePage() {
     el.scrollBy({ left: amount, behavior: 'smooth' })
   }, [])
 
-  const isLoading = loadingCategories || loadingFeatured || loadingRecent
-
-  if (isLoading) {
-    return <HomePageSkeleton />
-  }
+  const showFeatured = !loadingFeatured && featuredListings && featuredListings.length > 0
+  const showRecent = !loadingRecent && recentListings && recentListings.length > 0
+  const showEmpty = !loadingFeatured && !loadingRecent &&
+    (!featuredListings || featuredListings.length === 0) &&
+    (!recentListings || recentListings.length === 0)
 
   return (
     <div className="bg-background text-on-surface font-body-base min-h-screen flex flex-col">
       <Navbar />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-xxl flex flex-col gap-xxl">
-        {/* Category Slider */}
+        {/* Category Slider — renders as soon as categories load */}
         <section className="w-full">
           <h2 className="font-section-title text-section-title text-on-surface mb-md">
             Explorar Categorías
           </h2>
-          <div className="flex overflow-x-auto no-scrollbar gap-sm md:gap-md pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
-            {categories?.map((cat, index) => (
-              <Link
-                key={cat.id}
-                to={`/explorar?categoria=${cat.slug}`}
-                className="flex flex-col items-center gap-2 min-w-[80px] group active:scale-95 transition-transform"
-              >
-                <div
-                  className={`w-16 h-16 rounded-[14px] flex items-center justify-center transition-colors ${
-                    index === 0
-                      ? 'bg-primary-container shadow-[0_4px_12px_rgba(255,107,53,0.2)]'
-                      : 'bg-surface border border-border-light group-hover:border-primary-container'
-                  }`}
+          {loadingCategories ? (
+            <div className="flex gap-sm md:gap-md">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-2 min-w-[80px]">
+                  <div className="w-16 h-16 rounded-[14px] bg-surface-container-low animate-pulse" />
+                  <div className="h-3 w-12 bg-surface-container-low rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex overflow-x-auto no-scrollbar gap-sm md:gap-md pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+              {categories?.map((cat, index) => (
+                <Link
+                  key={cat.id}
+                  to={`/explorar?categoria=${cat.slug}`}
+                  className="flex flex-col items-center gap-2 min-w-[80px] group active:scale-95 transition-transform"
                 >
-                  <span
-                    className={`material-symbols-outlined text-[32px] ${
+                  <div
+                    className={`w-16 h-16 rounded-[14px] flex items-center justify-center transition-colors ${
                       index === 0
-                        ? 'text-white material-symbols-filled'
-                        : 'text-text-secondary group-hover:text-primary-container'
+                        ? 'bg-primary-container shadow-[0_4px_12px_rgba(255,107,53,0.2)]'
+                        : 'bg-surface border border-border-light group-hover:border-primary-container'
                     }`}
                   >
-                    {iconMap[cat.icon] || 'category'}
+                    <span
+                      className={`material-symbols-outlined text-[32px] ${
+                        index === 0
+                          ? 'text-white material-symbols-filled'
+                          : 'text-text-secondary group-hover:text-primary-container'
+                      }`}
+                    >
+                      {iconMap[cat.icon] || 'category'}
+                    </span>
+                  </div>
+                  <span
+                    className={`font-label-bold text-label-bold text-center ${
+                      index === 0 ? 'text-on-surface' : 'text-text-secondary'
+                    }`}
+                  >
+                    {cat.name}
                   </span>
-                </div>
-                <span
-                  className={`font-label-bold text-label-bold text-center ${
-                    index === 0 ? 'text-on-surface' : 'text-text-secondary'
-                  }`}
-                >
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* Featured / Horizontal Scroll Section */}
-        {featuredListings && featuredListings.length > 0 && (
-          <section className="w-full">
-            <div className="flex justify-between items-end mb-md">
-              <h2 className="font-section-title text-section-title text-on-surface">
-                Avisos Destacados
-              </h2>
+        {/* Featured — skeleton while loading, cards when ready */}
+        <section className="w-full">
+          <div className="flex justify-between items-end mb-md">
+            <h2 className="font-section-title text-section-title text-on-surface">
+              Avisos Destacados
+            </h2>
+            {showFeatured && (
               <Link to="/destacados" className="font-label-bold text-label-bold text-primary-container hover:text-primary-dark transition-colors">
                 Ver todos
               </Link>
+            )}
+          </div>
+
+          {loadingFeatured ? (
+            <div className="flex gap-lg">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <FeaturedCardSkeleton key={i} />
+              ))}
             </div>
+          ) : showFeatured ? (
             <div className="relative">
-              {/* Left arrow */}
               {canScrollLeft && (
                 <button
                   onClick={() => scrollBy('left')}
@@ -125,7 +145,6 @@ export default function HomePage() {
                   <span className="material-symbols-outlined text-[22px]">chevron_left</span>
                 </button>
               )}
-              {/* Right arrow */}
               {canScrollRight && (
                 <button
                   onClick={() => scrollBy('right')}
@@ -136,56 +155,63 @@ export default function HomePage() {
                 </button>
               )}
 
-              {/* Scrollable container */}
               <div
                 ref={scrollRef}
                 className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-lg pb-6 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 scroll-smooth"
               >
-                {featuredListings.map((listing) => (
+                {featuredListings!.map((listing) => (
                   <FeaturedCard key={listing.id} listing={listing} />
                 ))}
               </div>
             </div>
-          </section>
-        )}
+          ) : null}
+        </section>
 
-        {/* Recommended Grid */}
-        {recentListings && recentListings.length > 0 && (
-          <section className="w-full">
-            <h2 className="font-section-title text-section-title text-on-surface mb-md">
-              Recomendados para vos
-            </h2>
+        {/* Recommended — skeleton while loading, cards when ready */}
+        <section className="w-full">
+          <h2 className="font-section-title text-section-title text-on-surface mb-md">
+            Recomendados para vos
+          </h2>
+
+          {loadingRecent ? (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-md md:gap-lg">
-              {recentListings.map((listing) => (
-                <ProductCard key={listing.id} listing={listing} />
+              {Array.from({ length: 10 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
               ))}
             </div>
-            <div className="mt-lg flex justify-center">
-              <Link
-                to="/explorar"
-                className="bg-surface border border-primary-container text-primary-container px-6 py-3 rounded-[14px] font-label-bold text-label-bold hover:bg-bg-peach-soft transition-colors duration-150 ease-in-out active:scale-95 min-h-[48px] inline-block text-center"
-              >
-                Ver más resultados
-              </Link>
-            </div>
-          </section>
-        )}
+          ) : showRecent ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-md md:gap-lg">
+                {recentListings!.map((listing) => (
+                  <ProductCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              <div className="mt-lg flex justify-center">
+                <Link
+                  to="/explorar"
+                  className="bg-surface border border-primary-container text-primary-container px-6 py-3 rounded-[14px] font-label-bold text-label-bold hover:bg-bg-peach-soft transition-colors duration-150 ease-in-out active:scale-95 min-h-[48px] inline-block text-center"
+                >
+                  Ver más resultados
+                </Link>
+              </div>
+            </>
+          ) : null}
+        </section>
 
         {/* Empty State */}
-        {(!featuredListings || featuredListings.length === 0) &&
-          (!recentListings || recentListings.length === 0) && (
-            <section className="w-full text-center py-xxl">
-              <p className="text-text-secondary text-lg">
-                Todavía no hay publicaciones. ¡Sé el primero en publicar!
-              </p>
-              <Link
-                to="/publicar"
-                className="mt-4 inline-block bg-primary-container text-white px-6 py-3 rounded-[14px] font-label-bold hover:bg-primary-dark transition-colors"
-              >
-                Publicar ahora
-              </Link>
-            </section>
-          )}
+        {showEmpty && (
+          <section className="w-full text-center py-xxl">
+            <p className="text-text-secondary text-lg">
+              Todavía no hay publicaciones. ¡Sé el primero en publicar!
+            </p>
+            <Link
+              to="/publicar"
+              className="mt-4 inline-block bg-primary-container text-white px-6 py-3 rounded-[14px] font-label-bold hover:bg-primary-dark transition-colors"
+            >
+              Publicar ahora
+            </Link>
+          </section>
+        )}
       </main>
 
       <Footer />
