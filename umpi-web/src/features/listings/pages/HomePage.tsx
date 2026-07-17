@@ -6,6 +6,7 @@ import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import FeaturedCard from '../../../components/ui/FeaturedCard'
 import ProductCard from '../../../components/ui/ProductCard'
+import HomePageSkeleton from '../../../components/ui/skeletons/HomePageSkeleton'
 
 const iconMap: Record<string, string> = {
   Car: 'directions_car',
@@ -53,15 +54,7 @@ export default function HomePage() {
   const isLoading = loadingCategories || loadingFeatured || loadingRecent
 
   if (isLoading) {
-    return (
-      <div className="bg-background text-on-surface font-body-base min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-text-secondary">Cargando...</div>
-        </main>
-        <Footer />
-      </div>
-    )
+    return <HomePageSkeleton />
   }
 
   return (
