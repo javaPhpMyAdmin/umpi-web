@@ -1,25 +1,68 @@
-import { useState } from 'react'
+/**
+ * PublishPage — Form for creating new listings.
+ *
+ * OPTIMIZATIONS:
+ * - useMemo: filtered categories (avoids re-filtering on every render)
+ * - useCallback: submit handler and input change handlers (stable references)
+ * - CharacterCounter: pure component, no unnecessary re-renders
+ * - maxLength: prevents exceeding limits at the input level
+ *
+ * CHARACTER LIMITS:
+ * - Title: 100 characters
+ * - Description: 500 characters
+ */
+
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
-import { useAuth } from '../../../hooks/useAuth'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useCategories } from '../../../hooks/useCategories'
+import { useCities } from '../../../hooks/useCities'
+import Select from '../../../components/ui/Select'
+import CharacterCounter from '../../../components/ui/CharacterCounter'
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const TITLE_MAX = 100
+const DESCRIPTION_MAX = 500
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PublishPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { session } = useAuth()
   const { data: categories } = useCategories()
+  const { data: cities } = useCities()
 
+  // ── Form state ────────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [categoryId, setCategoryId] = useState('')
-  const [location, setLocation] = useState('')
+  const [cityId, setCityId] = useState('')
   const [condition, setCondition] = useState<'new' | 'used'>('new')
 
+  // ── Memoized derived data ─────────────────────────────────────────────────
+  // Categories with "/" in name — only computed when categories change
+  const filteredCategories = useMemo(
+    () =>
+      categories
+        ?.filter((cat) => cat.name.includes('/'))
+        .map((cat) => ({ value: cat.id, label: cat.name })) || [],
+    [categories]
+  )
+
+  // City options — only computed when cities change
+  const cityOptions = useMemo(
+    () => cities?.map((city) => ({ value: city.id, label: city.name })) || [],
+    [cities]
+  )
+
+  // ── Mutation ──────────────────────────────────────────────────────────────
   const publishMutation = useMutation({
     mutationFn: async () => {
       if (!session?.user?.id) throw new Error('Debes iniciar sesión')
@@ -28,11 +71,11 @@ export default function PublishPage() {
         .from('listings')
         .insert({
           user_id: session.user.id,
-          title,
-          description,
+          title: title.trim(),
+          description: description.trim(),
           price: price ? parseFloat(price) : null,
           category_id: categoryId || null,
-          location,
+          city_id: cityId || null,
           status: 'active',
           images: [],
         })
@@ -48,16 +91,41 @@ export default function PublishPage() {
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    publishMutation.mutate()
-  }
+  // ── Stable callbacks (prevent child re-renders) ───────────────────────────
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      publishMutation.mutate()
+    },
+    [publishMutation]
+  )
 
+  const handleTitleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Prevent exceeding max length
+      if (e.target.value.length <= TITLE_MAX) {
+        setTitle(e.target.value)
+      }
+    },
+    []
+  )
+
+  const handleDescriptionChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      // Prevent exceeding max length
+      if (e.target.value.length <= DESCRIPTION_MAX) {
+        setDescription(e.target.value)
+      }
+    },
+    []
+  )
+
+  // ── Not logged in state ───────────────────────────────────────────────────
   if (!session) {
     return (
       <div className="bg-surface-container-low min-h-screen pb-24 md:pb-8 font-body-base">
         <Navbar />
-        <main className="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop mt-8">
+        <main className="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop mt-8 mb-20">
           <div className="text-center py-xxl">
             <p className="text-text-secondary text-lg mb-4">Debes iniciar sesión para publicar</p>
             <button
@@ -73,11 +141,12 @@ export default function PublishPage() {
     )
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="bg-surface-container-low min-h-screen pb-24 md:pb-8 font-body-base">
       <Navbar />
 
-      <main className="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop mt-8">
+      <main className="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop mt-8 mb-20">
         <div className="mb-8">
           <h2 className="font-title-lg text-title-lg text-on-surface">Publicar Aviso</h2>
           <p className="font-body-base text-body-base text-text-secondary mt-2">
@@ -110,6 +179,7 @@ export default function PublishPage() {
               Información principal
             </h3>
 
+            {/* Title with character counter */}
             <div className="space-y-2">
               <label className="font-label-bold text-label-bold text-on-surface block">
                 Título del aviso
@@ -119,36 +189,21 @@ export default function PublishPage() {
                 placeholder="Ej: Bicicleta de paseo Rodado 26 casi nueva"
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={handleTitleChange}
+                maxLength={TITLE_MAX}
                 required
               />
+              <CharacterCounter current={title.length} max={TITLE_MAX} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="font-label-bold text-label-bold text-on-surface block">
-                  Categoría
-                </label>
-                <div className="relative">
-                  <select
-                    className="w-full bg-surface border border-border-light rounded-[14px] px-[14px] py-3 appearance-none focus:ring-2 focus:ring-primary-container focus:border-primary-container font-body-base text-body-base outline-none transition-all"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                  >
-                    <option disabled value="">
-                      Seleccioná una categoría
-                    </option>
-                    {categories?.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
-                    expand_more
-                  </span>
-                </div>
-              </div>
+              <Select
+                label="Categoría"
+                value={categoryId}
+                onChange={setCategoryId}
+                placeholder="Seleccioná una categoría"
+                options={filteredCategories}
+              />
 
               <div className="space-y-2">
                 <label className="font-label-bold text-label-bold text-on-surface block">
@@ -185,6 +240,7 @@ export default function PublishPage() {
               </div>
             </div>
 
+            {/* Description with character counter */}
             <div className="space-y-2">
               <label className="font-label-bold text-label-bold text-on-surface block">
                 Descripción
@@ -194,9 +250,11 @@ export default function PublishPage() {
                 placeholder="Describí el producto con el mayor detalle posible. Estado, tiempo de uso, motivos de venta..."
                 rows={5}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={handleDescriptionChange}
+                maxLength={DESCRIPTION_MAX}
                 required
-              ></textarea>
+              />
+              <CharacterCounter current={description.length} max={DESCRIPTION_MAX} />
             </div>
           </section>
 
@@ -220,38 +278,21 @@ export default function PublishPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="font-label-bold text-label-bold text-on-surface block">
-                Ubicación
-              </label>
-              <div className="relative">
-                <input
-                  className="w-full bg-surface border border-border-light rounded-[14px] px-[14px] py-3 focus:ring-2 focus:ring-primary-container focus:border-primary-container font-body-base text-body-base outline-none transition-all"
-                  placeholder="Seleccioná tu zona"
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  required
-                />
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
-                  location_on
-                </span>
-              </div>
-            </div>
+            <Select
+              label="Ubicación"
+              value={cityId}
+              onChange={setCityId}
+              placeholder="Seleccioná tu ciudad"
+              options={cityOptions}
+            />
           </section>
 
           {/* Actions */}
-          <div className="flex flex-col-reverse md:flex-row justify-end gap-4 pt-4">
-            <button
-              type="button"
-              className="px-8 py-3 rounded-[14px] bg-bg-peach-mid text-text-secondary font-label-bold text-label-bold hover:bg-surface-variant transition-colors h-[56px] flex items-center justify-center"
-            >
-              Guardar Borrador
-            </button>
+          <div className="pt-4">
             <button
               type="submit"
               disabled={publishMutation.isPending}
-              className="px-10 py-3 rounded-[14px] bg-primary-container text-on-primary font-label-bold text-label-bold hover:bg-primary-dark transition-colors shadow-sm h-[56px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-[14px] bg-primary-container text-on-primary font-label-bold text-label-bold hover:bg-primary-dark transition-colors shadow-sm h-[56px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {publishMutation.isPending ? (
                 'Publicando...'

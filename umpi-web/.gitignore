@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# SDD artifacts
+.atl/
+.agents/
+openspec/
+skills-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

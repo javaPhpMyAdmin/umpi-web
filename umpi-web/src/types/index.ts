@@ -9,6 +9,12 @@ export interface Category {
   created_at: string
 }
 
+export interface City {
+  id: string
+  name: string
+  slug: string
+}
+
 export interface Listing {
   id: string
   user_id: string

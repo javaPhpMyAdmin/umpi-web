@@ -18,8 +18,8 @@ export default function FeaturedCard({ listing }: FeaturedCardProps) {
           src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
           alt={listing.title}
         />
-        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-[4px] font-small-subtext text-small-subtext text-on-surface flex items-center gap-1">
-          <span className="material-symbols-outlined text-[14px] text-star-yellow material-symbols-filled">star</span>
+        <div className="absolute top-3 left-3 bg-amber-500 text-white px-2 py-0.5 rounded-full text-[11px] font-bold shadow-md flex items-center gap-1">
+          <span className="material-symbols-outlined text-[12px] material-symbols-filled">star</span>
           Destacado
         </div>
         <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-text-secondary hover:text-error-red transition-colors z-10">

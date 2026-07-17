@@ -55,7 +55,7 @@ export default function PlansPage() {
         <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mb-[80px]">
           {plans && plans.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-xl md:gap-gutter max-w-4xl mx-auto">
-              {plans.map((plan, index) => {
+              {plans.map((plan) => {
                 const isPremium = plan.slug === 'premium' || plan.listing_priority > 0
                 return (
                   <div

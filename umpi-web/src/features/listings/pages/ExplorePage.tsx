@@ -1,82 +1,76 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import ProductCard from '../../../components/ui/ProductCard'
 import { useCategories } from '../../../hooks/useCategories'
-import { useListings } from '../../../hooks/useListings'
-import type { ListingsFilters } from '../../../hooks/useListings'
+import { useListings, flattenListings, type ListingsFilters } from '../../../hooks/useListings'
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
 
 export default function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: categories } = useCategories()
 
-  // Get category from URL params
   const categorySlug = searchParams.get('categoria')
   const selectedCategory = categories?.find((c) => c.slug === categorySlug)
 
-  // Filter states
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
   const [location, setLocation] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'price_asc' | 'price_desc'>('recent')
 
-  // Build filters object
   const filters: ListingsFilters = useMemo(() => {
-    const f: ListingsFilters = {
-      sortBy,
-    }
-
-    if (selectedCategory) {
-      f.categoryId = selectedCategory.id
-    }
-
-    if (priceMin) {
-      f.priceMin = parseFloat(priceMin)
-    }
-
-    if (priceMax) {
-      f.priceMax = parseFloat(priceMax)
-    }
-
-    if (location) {
-      f.location = location
-    }
-
+    const f: ListingsFilters = { sortBy }
+    if (selectedCategory) f.categoryId = selectedCategory.id
+    if (priceMin) f.priceMin = parseFloat(priceMin)
+    if (priceMax) f.priceMax = parseFloat(priceMax)
+    if (location) f.location = location
     return f
   }, [selectedCategory, priceMin, priceMax, location, sortBy])
 
-  const { data: listings, isLoading } = useListings(filters)
+  const {
+    data: infiniteData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useListings(filters)
 
-  // Active filters for chips
+  const listings = flattenListings(infiniteData)
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore: !!hasNextPage,
+    isLoading: isFetchingNextPage,
+  })
+
   const activeFilters = useMemo(() => {
-    const filters: { label: string; onRemove: () => void }[] = []
-
+    const result: { label: string; onRemove: () => void }[] = []
     if (selectedCategory) {
-      filters.push({
+      result.push({
         label: selectedCategory.name,
         onRemove: () => setSearchParams({}),
       })
     }
-
     if (priceMin || priceMax) {
-      filters.push({
+      result.push({
         label: `Precio: ${priceMin || '0'} - ${priceMax || '∞'}`,
-        onRemove: () => {
-          setPriceMin('')
-          setPriceMax('')
-        },
+        onRemove: () => { setPriceMin(''); setPriceMax('') },
       })
     }
-
     if (location) {
-      filters.push({
+      result.push({
         label: `Ubicación: ${location}`,
         onRemove: () => setLocation(''),
       })
     }
-
-    return filters
+    return result
   }, [selectedCategory, priceMin, priceMax, location, setSearchParams])
 
   const clearAllFilters = () => {
@@ -94,7 +88,6 @@ export default function ExplorePage() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-xxl flex flex-col md:flex-row gap-margin-desktop">
         {/* Sidebar Filters */}
         <aside className="hidden md:block w-64 flex-shrink-0 space-y-xxl">
-          {/* Breadcrumbs */}
           <nav className="flex items-center gap-xs text-small-subtext font-small-subtext text-text-secondary mb-lg">
             <a className="hover:text-primary-container transition-colors" href="/">Inicio</a>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
@@ -104,11 +97,8 @@ export default function ExplorePage() {
           <div className="bg-surface rounded-[16px] p-lg shadow-sm border border-surface-variant">
             <h2 className="font-section-title text-section-title text-on-surface mb-lg">Filtros</h2>
 
-            {/* Categories */}
             <div className="mb-xxl">
-              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">
-                Categoría
-              </h3>
+              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">Categoría</h3>
               <div className="space-y-sm">
                 {categories?.map((cat) => (
                   <label key={cat.id} className="flex items-center gap-sm cursor-pointer group">
@@ -119,19 +109,14 @@ export default function ExplorePage() {
                       onChange={() => setSearchParams({ categoria: cat.slug })}
                       className="text-primary-container focus:ring-primary-container w-4 h-4 transition-colors cursor-pointer border-border-light"
                     />
-                    <span className="font-body-base text-body-base text-on-surface group-hover:text-primary-container transition-colors">
-                      {cat.name}
-                    </span>
+                    <span className="font-body-base text-body-base text-on-surface group-hover:text-primary-container transition-colors">{cat.name}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            {/* Price Range */}
             <div className="mb-xxl">
-              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">
-                Precio
-              </h3>
+              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">Precio</h3>
               <div className="flex gap-sm items-center mb-md">
                 <div className="relative flex-1">
                   <span className="absolute left-sm top-1/2 -translate-y-1/2 text-text-muted text-small-subtext">$</span>
@@ -157,15 +142,10 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* Location */}
             <div>
-              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">
-                Ubicación
-              </h3>
+              <h3 className="font-label-bold text-label-bold text-text-secondary mb-md uppercase tracking-wider">Ubicación</h3>
               <div className="relative w-full group">
-                <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-container transition-colors text-[20px]">
-                  location_on
-                </span>
+                <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-container transition-colors text-[20px]">location_on</span>
                 <input
                   type="text"
                   value={location}
@@ -180,14 +160,13 @@ export default function ExplorePage() {
 
         {/* Results Canvas */}
         <section className="flex-1 flex flex-col">
-          {/* Header & Sorting */}
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-lg gap-sm">
             <div>
               <h1 className="font-title-lg text-title-lg text-on-surface">
                 {selectedCategory ? selectedCategory.name : 'Explorar'}
               </h1>
               <p className="font-body-base text-body-base text-text-secondary mt-1">
-                {isLoading ? 'Cargando...' : `${listings?.length || 0} resultados encontrados`}
+                {isLoading ? 'Cargando...' : `${listings.length} resultados encontrados`}
               </p>
             </div>
             <div className="flex items-center gap-sm self-start md:self-auto">
@@ -203,43 +182,51 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          {/* Active Filters Chips */}
           {activeFilters.length > 0 && (
             <div className="flex flex-wrap gap-xs mb-lg">
               {activeFilters.map((filter, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-xs px-sm py-1 rounded-full bg-primary-container text-on-primary font-label-bold text-label-bold"
-                >
+                <span key={index} className="inline-flex items-center gap-xs px-sm py-1 rounded-full bg-primary-container text-on-primary font-label-bold text-label-bold">
                   {filter.label}
-                  <button
-                    onClick={filter.onRemove}
-                    className="flex items-center justify-center hover:bg-primary-dark rounded-full p-1 transition-colors"
-                  >
+                  <button onClick={filter.onRemove} className="flex items-center justify-center hover:bg-primary-dark rounded-full p-1 transition-colors">
                     <span className="material-symbols-outlined text-[14px]">close</span>
                   </button>
                 </span>
               ))}
-              <button
-                onClick={clearAllFilters}
-                className="inline-flex items-center px-sm py-1 rounded-full border border-border-light text-text-secondary font-label-bold text-label-bold hover:bg-surface-container-low transition-colors"
-              >
+              <button onClick={clearAllFilters} className="inline-flex items-center px-sm py-1 rounded-full border border-border-light text-text-secondary font-label-bold text-label-bold hover:bg-surface-container-low transition-colors">
                 Limpiar filtros
               </button>
             </div>
           )}
 
-          {/* Grid */}
           {isLoading ? (
             <div className="flex justify-center items-center py-xxl">
               <div className="text-text-secondary">Cargando resultados...</div>
             </div>
-          ) : listings && listings.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-[12px] md:gap-lg">
-              {listings.map((listing) => (
-                <ProductCard key={listing.id} listing={listing} />
-              ))}
-            </div>
+          ) : listings.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-[12px] md:gap-lg">
+                {listings.map((listing) => (
+                  <ProductCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} className="h-1" />
+
+              {/* Loading more indicator */}
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-lg">
+                  <div className="text-text-secondary text-sm">Cargando más...</div>
+                </div>
+              )}
+
+              {/* End of results */}
+              {!hasNextPage && listings.length > 0 && (
+                <div className="flex justify-center py-lg">
+                  <p className="text-text-muted text-small-subtext">No hay más resultados</p>
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-xxl text-center">
               <span className="material-symbols-outlined text-6xl text-text-muted mb-4">search_off</span>

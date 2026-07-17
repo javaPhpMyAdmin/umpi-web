@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import type { Conversation, Message } from '../../../types'
 import Navbar from '../../../components/layout/Navbar'
-import { useAuth } from '../../../hooks/useAuth'
+import { useAuth } from '../../../contexts/AuthContext'
 import { timeAgo } from '../../../lib/utils'
 
 function useConversations() {

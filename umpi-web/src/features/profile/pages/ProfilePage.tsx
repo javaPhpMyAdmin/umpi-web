@@ -1,14 +1,16 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
-import ProductCard from '../../../components/ui/ProductCard'
-import { useAuth } from '../../../hooks/useAuth'
+import Modal from '../../../components/ui/Modal'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useUserListings } from '../../../hooks/useUserListings'
 import { formatPrice } from '../../../lib/utils'
 
 export default function ProfilePage() {
   const { session, profile, isLoading: loadingAuth } = useAuth()
-  const { data: myListings, isLoading: loadingListings } = useUserListings(session?.user?.id || '')
+  const { data: myListings, isLoading: loadingListings, deleteListing, isDeleting } = useUserListings(session?.user?.id || '')
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
   if (loadingAuth) {
     return (
@@ -111,22 +113,9 @@ export default function ProfilePage() {
                   <span className="material-symbols-outlined">workspace_premium</span>
                 </div>
                 <div>
-                  <p className="font-label-bold text-label-bold text-on-surface">Vendedor Confiable</p>
+                  <p className="font-label-bold text-label-bold text-on-surface">Publicador Confiable</p>
                   <p className="font-small-subtext text-small-subtext text-text-secondary">
                     Destacado por la comunidad
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-between items-center mt-2">
-              <div className="flex items-center gap-3">
-                <div className="bg-surface-container text-text-secondary p-2 rounded-lg">
-                  <span className="material-symbols-outlined">shopping_cart_checkout</span>
-                </div>
-                <div>
-                  <p className="font-label-bold text-label-bold text-on-surface">+{profile?.total_sales || 0} Ventas</p>
-                  <p className="font-small-subtext text-small-subtext text-text-secondary">
-                    En los últimos 12 meses
                   </p>
                 </div>
               </div>
@@ -172,9 +161,6 @@ export default function ProfilePage() {
             <button className="pb-3 border-b-2 border-transparent text-text-muted hover:text-on-surface transition-colors font-label-bold text-label-bold">
               Favoritos
             </button>
-            <button className="pb-3 border-b-2 border-transparent text-text-muted hover:text-on-surface transition-colors font-label-bold text-label-bold">
-              Mis Compras
-            </button>
           </div>
 
           {/* Listings Grid */}
@@ -193,6 +179,12 @@ export default function ProfilePage() {
                         src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
                         alt={listing.title}
                       />
+                      {listing.is_featured && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-full text-[11px] font-bold shadow-md">
+                          <span className="material-symbols-outlined text-[12px] material-symbols-filled">star</span>
+                          Destacado
+                        </div>
+                      )}
                     </div>
                     <div className="p-4 flex flex-col flex-grow">
                       <h3 className="font-body-base text-body-base text-on-surface line-clamp-2 mb-2">
@@ -213,7 +205,11 @@ export default function ProfilePage() {
                       <span className="material-symbols-outlined text-[16px]">edit</span>
                       Editar
                     </button>
-                    <button className="w-[36px] h-[36px] rounded-lg bg-bg-peach-soft text-primary-dark hover:bg-error-container hover:text-error transition-colors flex items-center justify-center shrink-0">
+                    <button
+                      onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
+                      disabled={isDeleting}
+                      className="w-[36px] h-[36px] rounded-lg bg-bg-peach-soft text-primary-dark hover:bg-error-container hover:text-error transition-colors flex items-center justify-center shrink-0 disabled:opacity-50"
+                    >
                       <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
                   </div>
@@ -236,6 +232,23 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteListing(deleteTarget.id, {
+              onSuccess: () => setDeleteTarget(null),
+            })
+          }
+        }}
+        title="Eliminar aviso"
+        message={`¿Estás seguro que quieres eliminar "${deleteTarget?.title}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        danger
+        loading={isDeleting}
+      />
     </div>
   )
 }
