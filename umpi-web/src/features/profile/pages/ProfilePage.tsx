@@ -35,9 +35,18 @@ export default function ProfilePage() {
     },
   })
 
-  const subscriptionLabel = profile?.subscription_type
-    ? profile.subscription_type.charAt(0).toUpperCase() + profile.subscription_type.slice(1)
-    : null
+  const subscriptionInfo = (() => {
+    const type = profile?.subscription_type
+    if (!type) return null
+    switch (type) {
+      case 'premium':
+        return { label: 'Premium', price: '$30.000/mes', icon: 'star', color: 'bg-primary-container text-white' }
+      case 'estandar':
+        return { label: 'Estándar', price: '$5.900/mes', icon: 'card_membership', color: 'bg-secondary-container text-on-secondary-container' }
+      default:
+        return { label: type.charAt(0).toUpperCase() + type.slice(1), price: null, icon: 'card_membership', color: 'bg-secondary-container text-on-secondary-container' }
+    }
+  })()
 
   if (loadingAuth) {
     return <ProfilePageSkeleton />
@@ -107,18 +116,21 @@ export default function ProfilePage() {
           {/* Subscription Card */}
           <div className="bg-surface rounded-xl shadow-card p-6 flex flex-col gap-4">
             <h2 className="font-section-title text-section-title text-on-surface">Mi Suscripción</h2>
-            {subscriptionLabel ? (
+            {subscriptionInfo ? (
               <>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${profile?.subscription_type === 'premium' ? 'bg-primary-container text-white' : 'bg-secondary-container text-on-secondary-container'}`}>
-                    <span className="material-symbols-outlined">
-                      {profile?.subscription_type === 'premium' ? 'star' : 'card_membership'}
-                    </span>
+                  <div className={`p-2 rounded-lg ${subscriptionInfo.color}`}>
+                    <span className="material-symbols-outlined">{subscriptionInfo.icon}</span>
                   </div>
                   <div>
-                    <p className="font-label-bold text-label-bold text-on-surface">{subscriptionLabel}</p>
-                    {profile?.subscription_expires_at && (
+                    <p className="font-label-bold text-label-bold text-on-surface">{subscriptionInfo.label}</p>
+                    {subscriptionInfo.price && (
                       <p className="font-small-subtext text-small-subtext text-text-secondary">
+                        {subscriptionInfo.price}
+                      </p>
+                    )}
+                    {profile?.subscription_expires_at && (
+                      <p className="font-small-subtext text-small-subtext text-text-muted">
                         Expira {new Date(profile.subscription_expires_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     )}
