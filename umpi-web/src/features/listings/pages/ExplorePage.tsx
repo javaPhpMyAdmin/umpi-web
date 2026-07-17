@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import ProductCard from '../../../components/ui/ProductCard'
+import ProductCardSkeleton from '../../../components/ui/skeletons/ProductCardSkeleton'
 import { useCategories } from '../../../hooks/useCategories'
 import { useListings, flattenListings, type ListingsFilters } from '../../../hooks/useListings'
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
@@ -86,7 +87,7 @@ export default function ExplorePage() {
       <Navbar />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-xxl flex flex-col md:flex-row gap-margin-desktop">
-        {/* Sidebar Filters */}
+        {/* Sidebar Filters — renders immediately, categories load fast */}
         <aside className="hidden md:block w-64 flex-shrink-0 space-y-xxl">
           <nav className="flex items-center gap-xs text-small-subtext font-small-subtext text-text-secondary mb-lg">
             <a className="hover:text-primary-container transition-colors" href="/">Inicio</a>
@@ -198,9 +199,12 @@ export default function ExplorePage() {
             </div>
           )}
 
+          {/* Grid — skeleton while loading, cards when ready */}
           {isLoading ? (
-            <div className="flex justify-center items-center py-xxl">
-              <div className="text-text-secondary">Cargando resultados...</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-[12px] md:gap-lg">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
             </div>
           ) : listings.length > 0 ? (
             <>
@@ -210,17 +214,14 @@ export default function ExplorePage() {
                 ))}
               </div>
 
-              {/* Infinite scroll sentinel */}
               <div ref={sentinelRef} className="h-1" />
 
-              {/* Loading more indicator */}
               {isFetchingNextPage && (
                 <div className="flex justify-center py-lg">
                   <div className="text-text-secondary text-sm">Cargando más...</div>
                 </div>
               )}
 
-              {/* End of results */}
               {!hasNextPage && listings.length > 0 && (
                 <div className="flex justify-center py-lg">
                   <p className="text-text-muted text-small-subtext">No hay más resultados</p>

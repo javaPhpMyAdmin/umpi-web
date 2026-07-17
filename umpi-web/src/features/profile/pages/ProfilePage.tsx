@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import Modal from '../../../components/ui/Modal'
+import ProfilePageSkeleton from '../../../components/ui/skeletons/ProfilePageSkeleton'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useUserListings } from '../../../hooks/useUserListings'
 import { formatPrice } from '../../../lib/utils'
@@ -13,18 +14,9 @@ export default function ProfilePage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
   if (loadingAuth) {
-    return (
-      <div className="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-base">
-        <Navbar />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="text-text-secondary">Cargando...</div>
-        </main>
-        <Footer />
-      </div>
-    )
+    return <ProfilePageSkeleton />
   }
 
-  // Si no hay sesión, redirigir a login
   if (!session) {
     return (
       <div className="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-base">
@@ -163,10 +155,19 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Listings Grid */}
+          {/* Listings Grid — skeleton while loading, cards when ready */}
           {loadingListings ? (
-            <div className="flex justify-center items-center py-xxl">
-              <div className="text-text-secondary">Cargando avisos...</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-md md:gap-gutter">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-surface rounded-xl shadow-card overflow-hidden">
+                  <div className="h-[110px] md:h-[160px] w-full bg-surface-container-low animate-pulse" />
+                  <div className="p-4 flex flex-col gap-2">
+                    <div className="h-4 w-full bg-surface-container-low rounded animate-pulse" />
+                    <div className="h-4 w-3/4 bg-surface-container-low rounded animate-pulse" />
+                    <div className="h-5 w-20 bg-surface-container-low rounded animate-pulse mt-2" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : myListings && myListings.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-md md:gap-gutter">
