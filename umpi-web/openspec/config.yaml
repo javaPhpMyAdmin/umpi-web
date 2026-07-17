@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Tech stack: React 19 + TypeScript 6 + Vite 5 + Tailwind CSS 3 + Supabase
+  Architecture: Feature-based (src/features/{auth,listings,messages,profile,subscriptions})
+  Routing: React Router DOM 7 (Spanish locale routes)
+  State: TanStack React Query 5
+  Testing: NOT SET UP — no test runner or test files
+  Linting: BROKEN — configs exist (ESLint, Oxlint) but neither installed
+  Formatter: NOT CONFIGURED
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Consider impact on existing feature modules
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Write scenarios in English
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Follow existing feature-based directory structure
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    - Use feature-based directory structure
+    - Keep components small and focused
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: "pnpm build"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
