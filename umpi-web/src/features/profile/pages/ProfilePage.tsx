@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../../../lib/supabase'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import Modal from '../../../components/ui/Modal'
@@ -10,8 +12,32 @@ import { formatPrice } from '../../../lib/utils'
 
 export default function ProfilePage() {
   const { session, profile, isLoading: loadingAuth } = useAuth()
+  const queryClient = useQueryClient()
   const { data: myListings, isLoading: loadingListings, deleteListing, isDeleting } = useUserListings(session?.user?.id || '')
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
+  const [cancelSubTarget, setCancelSubTarget] = useState(false)
+
+  const cancelSubscription = useMutation({
+    mutationFn: async () => {
+      if (!session?.user?.id) throw new Error('No user')
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          subscription_type: '',
+          subscription_expires_at: null,
+        })
+        .eq('id', session.user.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] })
+      setCancelSubTarget(false)
+    },
+  })
+
+  const subscriptionLabel = profile?.subscription_type
+    ? profile.subscription_type.charAt(0).toUpperCase() + profile.subscription_type.slice(1)
+    : null
 
   if (loadingAuth) {
     return <ProfilePageSkeleton />
@@ -76,6 +102,53 @@ export default function ProfilePage() {
                 Configuración de Cuenta
               </button>
             </div>
+          </div>
+
+          {/* Subscription Card */}
+          <div className="bg-surface rounded-xl shadow-card p-6 flex flex-col gap-4">
+            <h2 className="font-section-title text-section-title text-on-surface">Mi Suscripción</h2>
+            {subscriptionLabel ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${profile?.subscription_type === 'premium' ? 'bg-primary-container text-white' : 'bg-secondary-container text-on-secondary-container'}`}>
+                    <span className="material-symbols-outlined">
+                      {profile?.subscription_type === 'premium' ? 'star' : 'card_membership'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-label-bold text-label-bold text-on-surface">{subscriptionLabel}</p>
+                    {profile?.subscription_expires_at && (
+                      <p className="font-small-subtext text-small-subtext text-text-secondary">
+                        Expira {new Date(profile.subscription_expires_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCancelSubTarget(true)}
+                  className="w-full h-[40px] rounded-[14px] border border-border-light text-text-secondary font-label-bold text-label-bold hover:bg-error-container hover:text-error hover:border-error transition-colors flex items-center justify-center gap-xs"
+                >
+                  <span className="material-symbols-outlined text-[18px]">cancel</span>
+                  Cancelar Suscripción
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center text-center py-2">
+                <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-text-muted text-[24px]">membership</span>
+                </div>
+                <p className="font-label-bold text-label-bold text-on-surface mb-1">Sin plan</p>
+                <p className="font-small-subtext text-small-subtext text-text-secondary mb-3">
+                  Elegí un plan para destacar tus publicaciones
+                </p>
+                <Link
+                  to="/planes"
+                  className="w-full h-[40px] rounded-[14px] bg-primary-container text-white font-label-bold text-label-bold hover:bg-primary-dark transition-colors flex items-center justify-center"
+                >
+                  Ver Planes
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Reputation Card */}
@@ -249,6 +322,17 @@ export default function ProfilePage() {
         confirmLabel="Eliminar"
         danger
         loading={isDeleting}
+      />
+
+      <Modal
+        open={cancelSubTarget}
+        onClose={() => setCancelSubTarget(false)}
+        onConfirm={() => cancelSubscription.mutate()}
+        title="Cancelar Suscripción"
+        message="¿Estás seguro que quieres cancelar tu suscripción? Perderás los beneficios de tu plan actual."
+        confirmLabel="Cancelar Plan"
+        danger
+        loading={cancelSubscription.isPending}
       />
     </div>
   )
