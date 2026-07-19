@@ -14,6 +14,7 @@ export default function ProductCard({ listing }: ProductCardProps) {
     >
       <div className="relative h-[140px] md:h-[180px] w-full bg-surface-container-low overflow-hidden">
         <img
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
           alt={listing.title}

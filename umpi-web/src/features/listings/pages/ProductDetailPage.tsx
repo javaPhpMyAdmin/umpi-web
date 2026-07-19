@@ -1,22 +1,84 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
+import Avatar from '../../../components/ui/Avatar'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useListing } from '../../../hooks/useListings'
 import { useProfile } from '../../../hooks/useProfile'
 import { useReviews } from '../../../hooks/useReviews'
+import { useCategories } from '../../../hooks/useCategories'
 import { formatPrice } from '../../../lib/utils'
+import { supabase } from '../../../lib/supabase'
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { session } = useAuth()
   const { data: listing, isLoading, error } = useListing(id || '')
   const { data: seller } = useProfile(listing?.user_id)
+  const { data: categories } = useCategories()
+
+  // Resolve category from cache (avoids N+1 JOIN in query)
+  const category = useMemo(() => {
+    if (!listing?.category_id || !categories) return null
+    return categories.find(c => c.id === listing.category_id) ?? null
+  }, [listing?.category_id, categories])
   const { data: reviews = [] } = useReviews(listing?.id)
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isZoomOpen, setIsZoomOpen] = useState(false)
   const [isReviewsOpen, setIsReviewsOpen] = useState(false)
-  const [sellerAvatarError, setSellerAvatarError] = useState(false)
+  const [contacting, setContacting] = useState(false)
+
+  // ── Contact: find or create conversation ──────────────────────────────────
+  const handleContact = async () => {
+    if (!session?.user) {
+      navigate('/login')
+      return
+    }
+    if (!listing || session.user.id === listing.user_id) return
+    setContacting(true)
+
+    try {
+      // Search for existing conversation for this listing + this user
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('listing_id', listing.id)
+        .or(`user1_id.eq.${session.user.id},user2_id.eq.${session.user.id}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const existingConv = conversations?.[0]
+
+      if (existingConv) {
+        navigate(`/mensajes?conversation=${existingConv.id}`)
+      } else {
+        // Create new conversation
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            listing_id: listing.id,
+            user1_id: session.user.id,
+            user2_id: listing.user_id,
+          })
+          .select('id')
+          .single()
+
+        if (convError) throw convError
+        // Invalidate so the conversations list picks up the new conversation
+        queryClient.invalidateQueries({ queryKey: ['conversations'] })
+        navigate(`/mensajes?conversation=${newConv.id}`)
+      }
+    } catch (err) {
+      console.error('Error starting conversation:', err)
+    } finally {
+      setContacting(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -59,10 +121,10 @@ export default function ProductDetailPage() {
         <nav className="flex items-center gap-2 text-small-subtext text-text-secondary mb-lg">
           <Link className="hover:text-primary-container transition-colors" to="/">Inicio</Link>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-          {listing.category && (
+          {category && (
             <>
-              <Link className="hover:text-primary-container transition-colors" to={`/explorar?categoria=${listing.category.slug}`}>
-                {listing.category.name}
+              <Link className="hover:text-primary-container transition-colors" to={`/explorar?categoria=${category.slug}`}>
+                {category.name}
               </Link>
               <span className="material-symbols-outlined text-[16px]">chevron_right</span>
             </>
@@ -172,7 +234,7 @@ export default function ProductDetailPage() {
               <div className="bg-surface rounded-xl p-lg shadow-sm border border-border-light flex flex-col gap-lg">
                 <div className="flex flex-col gap-1">
                   <span className="text-small-subtext text-text-secondary uppercase tracking-wider">
-                    {listing.is_featured ? 'Destacado' : 'Publicación'} • {listing.category?.name || 'Sin categoría'}
+                    {listing.is_featured ? 'Destacado' : 'Publicación'} • {category?.name || 'Sin categoría'}
                   </span>
                   <h1 className="font-title-lg text-title-lg text-on-surface">
                     {listing.title}
@@ -188,10 +250,24 @@ export default function ProductDetailPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3 mt-md">
-                  <button className="w-full h-[56px] bg-primary-container text-on-primary font-label-bold text-label-bold rounded-xl hover:bg-primary-dark transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-95 duration-150">
-                    <span className="material-symbols-outlined">chat</span>
-                    Contactar vendedor
-                  </button>
+                  {session?.user?.id !== listing.user_id ? (
+                    <button
+                      onClick={handleContact}
+                      disabled={contacting}
+                      className="w-full h-[56px] bg-primary-container text-on-primary font-label-bold text-label-bold rounded-xl hover:bg-primary-dark transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-95 duration-150 disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined">chat</span>
+                      {contacting ? 'Abriendo...' : 'Contactar'}
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/editar/${listing.id}`}
+                      className="w-full h-[56px] bg-primary-container text-on-primary font-label-bold text-label-bold rounded-xl hover:bg-primary-dark transition-colors shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined">edit</span>
+                      Editar mi aviso
+                    </Link>
+                  )}
                   <button className="w-full h-[48px] bg-bg-peach-soft text-primary-dark font-label-bold text-label-bold rounded-xl hover:bg-bg-peach-mid transition-colors flex items-center justify-center gap-2 active:scale-95 duration-150">
                     <span className="material-symbols-outlined">favorite_border</span>
                     Guardar en favoritos
@@ -204,22 +280,12 @@ export default function ProductDetailPage() {
                 <div className="bg-surface rounded-xl p-lg shadow-sm border border-border-light flex flex-col gap-md">
                   <h3 className="font-section-title text-section-title text-on-surface">Información sobre el publicador</h3>
                   <div className="flex items-center gap-3">
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-bg-peach-soft border border-border-light flex-shrink-0 flex items-center justify-center relative">
-                      {/* Fallback inicial siempre renderizado pero tapado por la imagen si carga */}
-                      <span className="font-label-bold text-label-bold text-primary-container uppercase absolute inset-0 flex items-center justify-center">
-                        {(seller.full_name || 'P').charAt(0)}
-                      </span>
-                      {!!seller.avatar_url && !sellerAvatarError && (
-                        <img
-                          className="w-full h-full object-cover relative z-10"
-                          src={seller.avatar_url}
-                          alt=""
-                          referrerPolicy="no-referrer"
-                          onError={() => setSellerAvatarError(true)}
-                        />
-                      )}
-                    </div>
+                    <Avatar
+                      src={seller.avatar_url}
+                      name={seller.full_name}
+                      size={48}
+                      className="border border-border-light"
+                    />
                     <div className="flex flex-col">
                       <span className="font-label-bold text-label-bold text-on-surface">
                         {seller.full_name || 'Publicador'}
@@ -291,27 +357,16 @@ export default function ProductDetailPage() {
               ) : (
                 reviews.map((review) => {
                   const reviewerName = review.reviewer?.full_name || 'Usuario'
-                  const reviewerAvatar = review.reviewer?.avatar_url
-                  const reviewerInitial = reviewerName.charAt(0)
                   return (
                     <div key={review.id} className="bg-white rounded-[14px] p-lg border border-border-light flex flex-col gap-md">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          {/* Reviewer Avatar */}
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-bg-peach-soft border border-border-light flex items-center justify-center flex-shrink-0 relative">
-                            <span className="font-label-bold text-[14px] text-primary-container uppercase absolute inset-0 flex items-center justify-center">
-                              {reviewerInitial}
-                            </span>
-                            {!!reviewerAvatar && (
-                              <img
-                                className="w-full h-full object-cover relative z-10"
-                                src={reviewerAvatar}
-                                alt=""
-                                referrerPolicy="no-referrer"
-                                onError={(e) => { e.currentTarget.style.display = 'none' }}
-                              />
-                            )}
-                          </div>
+                          <Avatar
+                            src={review.reviewer?.avatar_url}
+                            name={reviewerName}
+                            size={40}
+                            className="border border-border-light"
+                          />
                           <div className="flex flex-col">
                             <span className="font-label-bold text-label-bold text-on-surface">{reviewerName}</span>
                             <span className="text-text-secondary text-sm">

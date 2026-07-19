@@ -25,6 +25,7 @@ export interface Listing {
   description: string | null
   price: number | null
   price_type: string
+  condition: 'new' | 'used' | null
   location: string | null
   images: string[]
   is_featured: boolean
@@ -83,6 +84,9 @@ export interface SubscriptionPlan {
   currency: string
   features: string[]
   listing_priority: number
+  max_images: number
+  max_featured: number
+  featured_duration_days: number
   is_active: boolean
   created_at: string
 }
@@ -104,5 +108,16 @@ export interface Subscription {
   status: string
   started_at: string
   expires_at: string | null
+  created_at: string
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: 'review' | 'subscription_expiring' | 'message'
+  title: string
+  body: string
+  data: Record<string, any>
+  is_read: boolean
   created_at: string
 }

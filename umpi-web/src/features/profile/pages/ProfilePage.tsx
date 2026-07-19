@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
@@ -6,16 +6,33 @@ import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import Modal from '../../../components/ui/Modal'
 import ProfilePageSkeleton from '../../../components/ui/skeletons/ProfilePageSkeleton'
+import Avatar from '../../../components/ui/Avatar'
 import { useAuth } from '../../../contexts/AuthContext'
-import { useUserListings } from '../../../hooks/useUserListings'
+import { useUserListings, flattenUserListings, PAGE_SIZE } from '../../../hooks/useUserListings'
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
 import { formatPrice } from '../../../lib/utils'
 
 export default function ProfilePage() {
   const { session, profile, isLoading: loadingAuth } = useAuth()
   const queryClient = useQueryClient()
-  const { data: myListings, isLoading: loadingListings, deleteListing, isDeleting } = useUserListings(session?.user?.id || '')
+  const userId = session?.user?.id || ''
+  const { data: pagesData, isLoading: loadingListings, hasNextPage, isFetchingNextPage, fetchNextPage, deleteListing, isDeleting } = useUserListings(userId)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
   const [cancelSubTarget, setCancelSubTarget] = useState(false)
+
+  const myListings = flattenUserListings(pagesData)
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore: hasNextPage ?? false,
+    isLoading: isFetchingNextPage,
+  })
 
   const cancelSubscription = useMutation({
     mutationFn: async () => {
@@ -79,10 +96,11 @@ export default function ProfilePage() {
           {/* Profile Header Card */}
           <div className="bg-surface rounded-xl shadow-card p-6 flex flex-col items-center text-center">
             <div className="relative mb-4">
-              <img
-                className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-sm"
-                src={profile?.avatar_url || 'https://via.placeholder.com/128x128?text=Avatar'}
-                alt="Avatar"
+              <Avatar
+                src={profile?.avatar_url}
+                name={profile?.full_name}
+                size={128}
+                className="border-4 border-white shadow-sm"
               />
               {profile?.subscription_type === 'premium' && (
                 <div className="absolute bottom-1 right-1 bg-secondary text-white p-1.5 rounded-full border-2 border-white shadow-sm" title="Vendedor Verificado">
@@ -217,7 +235,7 @@ export default function ProfilePage() {
             <div className="bg-surface p-4 rounded-xl shadow-card flex flex-col gap-1">
               <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
               <span className="font-title-lg text-title-lg text-on-surface leading-tight">
-                {myListings?.length || 0}
+                {myListings.length}
               </span>
               <span className="font-small-subtext text-small-subtext text-text-secondary">Avisos Activos</span>
             </div>
@@ -233,7 +251,7 @@ export default function ProfilePage() {
           {/* Tabs */}
           <div className="flex gap-8 border-b border-border-light">
             <button className="pb-3 border-b-2 border-primary-container text-primary-container font-label-bold text-label-bold">
-              Mis Avisos ({myListings?.length || 0})
+              Mis Avisos ({myListings.length})
             </button>
             <button className="pb-3 border-b-2 border-transparent text-text-muted hover:text-on-surface transition-colors font-label-bold text-label-bold">
               Favoritos
@@ -254,54 +272,85 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
-          ) : myListings && myListings.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-md md:gap-gutter">
-              {myListings.map((listing) => (
-                <div key={listing.id} className="bg-surface rounded-xl shadow-card overflow-hidden flex flex-col cursor-pointer group">
-                  <Link to={`/producto/${listing.id}`}>
-                    <div className="relative h-[110px] md:h-[160px] w-full overflow-hidden">
-                      <img
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
-                        alt={listing.title}
-                      />
-                      {listing.is_featured && (
-                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-full text-[11px] font-bold shadow-md">
-                          <span className="material-symbols-outlined text-[12px] material-symbols-filled">star</span>
-                          Destacado
+          ) : myListings.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-md md:gap-gutter">
+                {myListings.map((listing) => (
+                  <div key={listing.id} className="bg-surface rounded-xl shadow-card overflow-hidden flex flex-col cursor-pointer group">
+                    <Link to={`/producto/${listing.id}`}>
+                      <div className="relative h-[110px] md:h-[160px] w-full overflow-hidden">
+                        <img
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
+                          alt={listing.title}
+                        />
+                        {listing.is_featured && (
+                          <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-full text-[11px] font-bold shadow-md">
+                            <span className="material-symbols-outlined text-[12px] material-symbols-filled">star</span>
+                            Destacado
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 flex flex-col flex-grow">
+                        <h3 className="font-body-base text-body-base text-on-surface line-clamp-2 mb-2">
+                          {listing.title}
+                        </h3>
+                        <div className="mt-auto">
+                          <p className="font-price-highlight text-price-highlight text-primary-container">
+                            {formatPrice(listing.price)}
+                          </p>
+                          <p className="font-small-subtext text-small-subtext text-text-muted mt-1">
+                            Activo
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    </Link>
+                    <div className="flex gap-2 border-t border-border-light pt-3 mt-3 px-4 pb-4">
+                      <Link
+                        to={`/editar/${listing.id}`}
+                        className="flex-1 h-[36px] rounded-lg border border-border-light text-on-surface font-label-bold text-label-bold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                        Editar
+                      </Link>
+                      <button
+                        onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
+                        disabled={isDeleting}
+                        className="w-[36px] h-[36px] rounded-lg bg-bg-peach-soft text-primary-dark hover:bg-error-container hover:text-error transition-colors flex items-center justify-center shrink-0 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
                     </div>
-                    <div className="p-4 flex flex-col flex-grow">
-                      <h3 className="font-body-base text-body-base text-on-surface line-clamp-2 mb-2">
-                        {listing.title}
-                      </h3>
-                      <div className="mt-auto">
-                        <p className="font-price-highlight text-price-highlight text-primary-container">
-                          {formatPrice(listing.price)}
-                        </p>
-                        <p className="font-small-subtext text-small-subtext text-text-muted mt-1">
-                          Activo
-                        </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} className="h-1" />
+
+              {/* Loading more indicator */}
+              {isFetchingNextPage && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-md md:gap-gutter">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-surface rounded-xl shadow-card overflow-hidden">
+                      <div className="h-[110px] md:h-[160px] w-full bg-surface-container-low animate-pulse" />
+                      <div className="p-4 flex flex-col gap-2">
+                        <div className="h-4 w-full bg-surface-container-low rounded animate-pulse" />
+                        <div className="h-4 w-3/4 bg-surface-container-low rounded animate-pulse" />
+                        <div className="h-5 w-20 bg-surface-container-low rounded animate-pulse mt-2" />
                       </div>
                     </div>
-                  </Link>
-                  <div className="flex gap-2 border-t border-border-light pt-3 mt-3 px-4 pb-4">
-                    <button className="flex-1 h-[36px] rounded-lg border border-border-light text-on-surface font-label-bold text-label-bold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1">
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
-                      disabled={isDeleting}
-                      className="w-[36px] h-[36px] rounded-lg bg-bg-peach-soft text-primary-dark hover:bg-error-container hover:text-error transition-colors flex items-center justify-center shrink-0 disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {/* End of results */}
+              {!hasNextPage && myListings.length > PAGE_SIZE && (
+                <p className="text-center text-text-muted text-small-subtext py-4">
+                  No hay más avisos
+                </p>
+              )}
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-xxl text-center">
               <span className="material-symbols-outlined text-6xl text-text-muted mb-4">inventory_2</span>

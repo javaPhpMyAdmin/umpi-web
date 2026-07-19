@@ -10,8 +10,11 @@
  * In a future iteration, this should open a dropdown menu.
  */
 
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { useNotificationCount, useRealtimeNotifications } from '../../hooks/useNotifications'
+import Avatar from '../ui/Avatar'
 
 const navLinks = [
   { to: '/', label: 'Inicio' },
@@ -24,10 +27,24 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { session, profile, logout, isLoggingOut } = useAuth()
+  const { data: unreadCount } = useNotificationCount(session?.user?.id)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Realtime: badge updates instantly when new notifications arrive
+  useRealtimeNotifications(session?.user?.id || null)
 
   const handleLogout = async () => {
     await logout()
     navigate('/')
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = searchQuery.trim()
+    if (trimmed) {
+      navigate(`/explorar?q=${encodeURIComponent(trimmed)}`)
+      setSearchQuery('')
+    }
   }
 
   return (
@@ -64,7 +81,7 @@ export default function Navbar() {
 
         {/* Search Bar (Desktop) */}
         <div className="hidden md:flex flex-1 max-w-md mx-6">
-          <div className="relative w-full">
+          <form onSubmit={handleSearch} className="relative w-full">
             <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
               search
             </span>
@@ -72,8 +89,10 @@ export default function Navbar() {
               className="w-full pl-10 pr-4 py-3 rounded-[14px] border border-border-light bg-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all font-body-base text-body-base placeholder:text-text-muted text-on-surface"
               placeholder="Buscar productos, marcas y más..."
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </form>
         </div>
 
         {/* Trailing Actions */}
@@ -88,22 +107,33 @@ export default function Navbar() {
                 Publicar
               </Link>
 
+              {/* Notification bell with unread badge */}
+              <button
+                onClick={() => navigate('/notificaciones')}
+                className="relative text-text-secondary hover:text-primary-dark transition-colors"
+                title="Notificaciones"
+              >
+                <span className="material-symbols-outlined text-[24px]">
+                  notifications
+                </span>
+                {unreadCount != null && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#E8752A] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
               {/* User avatar → navigates to profile */}
               <button
                 onClick={() => navigate('/perfil')}
                 className="relative group"
               >
-                {profile?.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name || 'Usuario'}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-border-light group-hover:border-primary-container transition-colors"
-                  />
-                ) : (
-                  <span className="material-symbols-outlined text-[28px] text-text-secondary group-hover:text-primary-dark transition-colors">
-                    account_circle
-                  </span>
-                )}
+                <Avatar
+                  src={profile?.avatar_url}
+                  name={profile?.full_name}
+                  size={36}
+                  className="border-2 border-border-light group-hover:border-primary-container transition-colors"
+                />
               </button>
 
               {/* Logout button */}
@@ -137,7 +167,7 @@ export default function Navbar() {
 
       {/* Mobile Search Bar */}
       <div className="md:hidden px-margin-mobile pb-4 w-full">
-        <div className="relative w-full">
+        <form onSubmit={handleSearch} className="relative w-full">
           <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             search
           </span>
@@ -145,8 +175,10 @@ export default function Navbar() {
             className="w-full pl-10 pr-4 py-3 rounded-[14px] border border-border-light bg-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all font-body-base text-body-base placeholder:text-text-muted text-on-surface"
             placeholder="Buscar..."
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
+        </form>
       </div>
     </header>
   )

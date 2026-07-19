@@ -14,6 +14,7 @@ export default function FeaturedCard({ listing }: FeaturedCardProps) {
     >
       <div className="relative h-[160px] w-full bg-surface-container-low">
         <img
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           src={listing.images?.[0] || 'https://via.placeholder.com/400x300?text=Sin+imagen'}
           alt={listing.title}

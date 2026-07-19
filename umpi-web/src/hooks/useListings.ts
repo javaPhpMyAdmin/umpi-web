@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Listing } from '../types'
 
@@ -28,7 +28,7 @@ interface ListingsCursor {
 function buildBaseQuery(filters: ListingsFilters) {
   let query = supabase
     .from('listings')
-    .select('*, category:category_id(*)')
+    .select('*')
     .eq('status', 'active')
 
   if (filters.categoryId) {
@@ -43,9 +43,7 @@ function buildBaseQuery(filters: ListingsFilters) {
   if (filters.location) {
     query = query.ilike('location', `%${filters.location}%`)
   }
-  if (filters.search) {
-    query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
-  }
+  // search is handled by RPC in useListings — not here
 
   return query
 }
@@ -66,19 +64,49 @@ function applySorting(query: ReturnType<typeof buildBaseQuery>, sortBy: Listings
 }
 
 export function useListings(filters: ListingsFilters = {}) {
+  // Use GIN-indexed RPC for text search (O(log n) vs O(n) ilike scan)
+  const isSearchMode = !!filters.search
+
   return useInfiniteQuery<ListingsPage>({
     queryKey: ['listings', 'infinite', filters],
     queryFn: async ({ pageParam }) => {
+      if (isSearchMode) {
+        // RPC: full-text search via GIN index + ts_rank
+        const cursor = pageParam ? JSON.parse(pageParam as string) as ListingsCursor : null
+        const offset = cursor ? parseInt(cursor.id, 10) || 0 : 0 // id field repurposed as offset for search mode
+
+        const { data, error } = await supabase.rpc('search_listings', {
+          p_query: filters.search!,
+          p_category_id: filters.categoryId ?? null,
+          p_price_min: filters.priceMin ?? null,
+          p_price_max: filters.priceMax ?? null,
+          p_location: filters.location ?? null,
+          p_limit: PAGE_SIZE + 1,
+          p_offset: offset,
+        })
+
+        if (error) throw error
+
+        const items = (data ?? []) as Listing[]
+        const hasMore = items.length > PAGE_SIZE
+        const slicedItems = hasMore ? items.slice(0, PAGE_SIZE) : items
+
+        // nextCursor carries the offset for next page
+        const nextCursor = hasMore
+          ? JSON.stringify({ listing_priority: 0, created_at: '', id: String(offset + PAGE_SIZE) })
+          : null
+
+        return { items: slicedItems, nextCursor }
+      }
+
+      // Non-search: standard cursor-based infinite query
       let query = applySorting(buildBaseQuery(filters), filters.sortBy)
 
       if (pageParam) {
         const cursor = JSON.parse(pageParam as string) as ListingsCursor
-        if (filters.sortBy === 'price_asc') {
-          query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`)
-        } else if (filters.sortBy === 'price_desc') {
+        if (filters.sortBy === 'price_asc' || filters.sortBy === 'price_desc') {
           query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`)
         } else {
-          // Default: recent (listing_priority DESC, created_at DESC, id DESC)
           query = query.or(
             `listing_priority.lt.${cursor.listing_priority},` +
             `and(listing_priority.eq.${cursor.listing_priority},created_at.lt.${cursor.created_at}),` +
@@ -87,7 +115,7 @@ export function useListings(filters: ListingsFilters = {}) {
         }
       }
 
-      query = query.limit(PAGE_SIZE + 1) // fetch one extra to know if there's more
+      query = query.limit(PAGE_SIZE + 1)
 
       const { data, error } = await query
       if (error) throw error
@@ -109,6 +137,7 @@ export function useListings(filters: ListingsFilters = {}) {
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined as string | undefined,
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -125,7 +154,7 @@ export function useFeaturedListingsAllInfinite() {
     queryFn: async ({ pageParam }) => {
       let query = supabase
         .from('listings')
-        .select('*, category:category_id(*)')
+        .select('*')
         .eq('status', 'active')
         .eq('is_featured', true)
         .order('listing_priority', { ascending: false })
@@ -174,7 +203,7 @@ export function useFeaturedListings(limit = 6) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('*, category:category_id(*)')
+        .select('*')
         .eq('status', 'active')
         .eq('is_featured', true)
         .order('listing_priority', { ascending: false })
@@ -192,7 +221,7 @@ export function useRecentListings(limit = 10) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('*, category:category_id(*)')
+        .select('*')
         .eq('status', 'active')
         .eq('is_featured', false)
         .order('created_at', { ascending: false })
@@ -210,8 +239,9 @@ export function useListing(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('*, category:category_id(*)')
+        .select('*')
         .eq('id', id)
+        .eq('status', 'active') // Don't expose archived/sold/draft via direct URL
         .single()
 
       if (error) throw error

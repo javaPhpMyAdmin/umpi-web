@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
@@ -13,25 +13,35 @@ export default function ExplorePage() {
   const { data: categories } = useCategories()
 
   const categorySlug = searchParams.get('categoria')
+  const searchQuery = searchParams.get('q') || ''
   const selectedCategory = categories?.find((c) => c.slug === categorySlug)
 
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
   const [location, setLocation] = useState('')
+  const [debouncedLocation, setDebouncedLocation] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'price_asc' | 'price_desc'>('recent')
+
+  // Debounce location: wait 400ms after last keystroke before querying
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedLocation(location), 400)
+    return () => clearTimeout(timer)
+  }, [location])
 
   const filters: ListingsFilters = useMemo(() => {
     const f: ListingsFilters = { sortBy }
     if (selectedCategory) f.categoryId = selectedCategory.id
+    if (searchQuery) f.search = searchQuery
     if (priceMin) f.priceMin = parseFloat(priceMin)
     if (priceMax) f.priceMax = parseFloat(priceMax)
-    if (location) f.location = location
+    if (debouncedLocation) f.location = debouncedLocation
     return f
-  }, [selectedCategory, priceMin, priceMax, location, sortBy])
+  }, [selectedCategory, searchQuery, priceMin, priceMax, debouncedLocation, sortBy])
 
   const {
     data: infiniteData,
     isLoading,
+    isPlaceholderData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -53,10 +63,16 @@ export default function ExplorePage() {
 
   const activeFilters = useMemo(() => {
     const result: { label: string; onRemove: () => void }[] = []
+    if (searchQuery) {
+      result.push({
+        label: `"${searchQuery}"`,
+        onRemove: () => setSearchParams((prev) => { prev.delete('q'); return prev }),
+      })
+    }
     if (selectedCategory) {
       result.push({
         label: selectedCategory.name,
-        onRemove: () => setSearchParams({}),
+        onRemove: () => setSearchParams((prev) => { prev.delete('categoria'); return prev }),
       })
     }
     if (priceMin || priceMax) {
@@ -72,13 +88,14 @@ export default function ExplorePage() {
       })
     }
     return result
-  }, [selectedCategory, priceMin, priceMax, location, setSearchParams])
+  }, [searchQuery, selectedCategory, priceMin, priceMax, location, setSearchParams])
 
   const clearAllFilters = () => {
     setSearchParams({})
     setPriceMin('')
     setPriceMax('')
     setLocation('')
+    setDebouncedLocation('')
     setSortBy('recent')
   }
 
@@ -92,7 +109,9 @@ export default function ExplorePage() {
           <nav className="flex items-center gap-xs text-small-subtext font-small-subtext text-text-secondary mb-lg">
             <a className="hover:text-primary-container transition-colors" href="/">Inicio</a>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-            <span className="text-on-surface font-semibold">Resultados de búsqueda</span>
+              <span className="text-on-surface font-semibold">
+                {searchQuery ? `Búsqueda: ${searchQuery}` : 'Resultados de búsqueda'}
+              </span>
           </nav>
 
           <div className="bg-surface rounded-[16px] p-lg shadow-sm border border-surface-variant">
@@ -164,7 +183,7 @@ export default function ExplorePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-lg gap-sm">
             <div>
               <h1 className="font-title-lg text-title-lg text-on-surface">
-                {selectedCategory ? selectedCategory.name : 'Explorar'}
+                {searchQuery ? `Resultados para "${searchQuery}"` : selectedCategory ? selectedCategory.name : 'Explorar'}
               </h1>
               <p className="font-body-base text-body-base text-text-secondary mt-1">
                 {isLoading ? 'Cargando...' : `${listings.length} resultados encontrados`}
@@ -208,7 +227,7 @@ export default function ExplorePage() {
             </div>
           ) : listings.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-[12px] md:gap-lg">
+              <div className={`grid grid-cols-2 md:grid-cols-3 gap-[12px] md:gap-lg transition-opacity ${isPlaceholderData ? 'opacity-50 pointer-events-none' : ''}`}>
                 {listings.map((listing) => (
                   <ProductCard key={listing.id} listing={listing} />
                 ))}
