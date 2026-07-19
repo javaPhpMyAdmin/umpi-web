@@ -19,6 +19,9 @@ dist-ssr
 .agents/
 skills-lock.json
 
+# Supabase local
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
