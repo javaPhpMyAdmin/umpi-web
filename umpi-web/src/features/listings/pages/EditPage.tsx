@@ -47,7 +47,6 @@ export default function EditPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
 
   // ── Form state ────────────────────────────────────────────────────────────
@@ -218,8 +217,6 @@ export default function EditPage() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!session?.user?.id || !id) throw new Error('Debes iniciar sesión')
-      setUploading(true)
-
       // 1. Delete removed images from storage (fire-and-forget for speed)
       for (const url of removedImages) {
         deleteImage(url).catch(console.error)
@@ -238,7 +235,6 @@ export default function EditPage() {
         }
       }
 
-      setUploading(false)
       setUploadProgress('')
 
       // 3. Merge: remaining existing + newly uploaded
