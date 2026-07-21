@@ -5,6 +5,8 @@
  * Path format: {userId}/{timestamp}-{random}.{ext}
  */
 
+import { supabase } from './supabase'
+
 const BUCKET = 'listing-images'
 const MAX_SIZE_MB = 10
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -91,19 +93,15 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
   const buffer = await compressed.arrayBuffer()
 
   // Upload
-  const { error: uploadError } = await import('../lib/supabase').then(({ supabase }) =>
-    supabase.storage.from(BUCKET).upload(filePath, buffer, {
-      contentType: compressed.type,
-      upsert: false,
-    })
-  )
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(filePath, buffer, {
+    contentType: compressed.type,
+    upsert: false,
+  })
 
   if (uploadError) throw uploadError
 
   // Get public URL
-  const { data } = await import('../lib/supabase').then(({ supabase }) =>
-    supabase.storage.from(BUCKET).getPublicUrl(filePath)
-  )
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
 
   return data.publicUrl
 }
@@ -113,8 +111,6 @@ export async function uploadImage(file: File, userId: string): Promise<string> {
  */
 export async function deleteImage(publicUrl: string): Promise<void> {
   if (!publicUrl) throw new Error('Public URL is required')
-
-  const { supabase } = await import('../lib/supabase')
 
   // Extract the file path from the public URL
   const { data } = supabase.storage.from(BUCKET).getPublicUrl('')
