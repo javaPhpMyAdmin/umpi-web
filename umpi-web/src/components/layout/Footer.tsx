@@ -23,7 +23,7 @@ export default function Footer() {
             Umpi
           </div>
           <p className="font-small-subtext text-small-subtext text-text-secondary">
-            © 2024 Umpi S.R.L. Hecho en Argentina.
+            © 2026 Umpi S.R.L. Hecho en Argentina.
           </p>
         </div>
 

@@ -69,8 +69,9 @@ export default function Navbar() {
       <div className="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto h-[72px]">
         {/* Brand */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="font-display-lg text-display-lg font-extrabold text-primary-container" style={{ color: '#FF6B35' }}>
-            Umpi
+          <Link to="/" className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[28px]" style={{ color: '#FF6B35' }}>storefront</span>
+            <span className="font-display-lg text-display-lg font-extrabold text-primary-container" style={{ color: '#FF6B35' }}>Umpi</span>
           </Link>
           {/* Navigation Links (Desktop) */}
           <nav className="hidden md:flex gap-6 items-center pt-1 h-full">
