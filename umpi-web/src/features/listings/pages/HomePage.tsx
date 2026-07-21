@@ -83,7 +83,7 @@ export default function HomePage() {
                 <Link
                   key={cat.id}
                   to={`/explorar?categoria=${cat.slug}`}
-                  className="flex flex-col items-center gap-2 min-w-[80px] group active:scale-95 transition-transform"
+                  className="flex flex-col items-center gap-2 min-w-[80px] max-w-[80px] group active:scale-95 transition-transform"
                 >
                   <div
                     className={`w-16 h-16 rounded-[14px] flex items-center justify-center transition-colors ${
@@ -103,11 +103,11 @@ export default function HomePage() {
                     </span>
                   </div>
                   <span
-                    className={`font-label-bold text-label-bold text-center ${
+                    className={`font-label-bold text-label-bold text-center leading-tight ${
                       index === 0 ? 'text-on-surface' : 'text-text-secondary'
                     }`}
                   >
-                    {cat.name}
+                    <span className="block truncate max-w-[76px]">{cat.name}</span>
                   </span>
                 </Link>
               ))}
