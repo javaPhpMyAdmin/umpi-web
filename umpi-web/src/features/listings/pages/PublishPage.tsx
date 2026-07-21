@@ -64,6 +64,7 @@ export default function PublishPage() {
   const [categoryId, setCategoryId] = useState('')
   const [cityId, setCityId] = useState('')
   const [condition, setCondition] = useState<'new' | 'used'>('new')
+  const [cityError, setCityError] = useState(false)
 
   // ── Photo state ──────────────────────────────────────────────────────────
   const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -241,9 +242,14 @@ export default function PublishPage() {
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault()
+      if (!cityId) {
+        setCityError(true)
+        return
+      }
+      setCityError(false)
       publishMutation.mutate()
     },
-    [publishMutation]
+    [publishMutation, cityId]
   )
 
   const handleTitleChange = useCallback(
@@ -477,10 +483,13 @@ export default function PublishPage() {
             <Select
               label="Ubicación"
               value={cityId}
-              onChange={setCityId}
+              onChange={(v) => { setCityId(v); setCityError(false) }}
               placeholder="Seleccioná tu ciudad"
               options={cityOptions}
             />
+            {cityError && (
+              <p className="text-error-red text-sm mt-1">Seleccioná una ciudad para publicar</p>
+            )}
           </section>
 
           {/* Featured Toggle Section */}
