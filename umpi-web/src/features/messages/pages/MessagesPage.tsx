@@ -161,6 +161,7 @@ function useMessages(conversationId: string | null) {
 export default function MessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [mobileShowChat, setMobileShowChat] = useState(false)
   const [newMessage, setNewMessage] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const queryClient = useQueryClient()
@@ -273,6 +274,7 @@ export default function MessagesPage() {
       })
       if (selectedConversationId === conversationId) {
         setSelectedConversationId(null)
+        setMobileShowChat(false)
       }
       setDeleteTarget(null)
     },
@@ -309,7 +311,7 @@ export default function MessagesPage() {
 
       <main className="flex-1 flex w-full overflow-hidden">
         {/* Left Sidebar: Conversations List */}
-        <aside className="w-full md:w-80 lg:w-96 flex flex-col bg-surface border-r border-border-light shrink-0">
+        <aside className={`${mobileShowChat ? 'hidden' : 'flex'} md:flex w-full md:w-80 lg:w-96 flex-col bg-surface border-r border-border-light shrink-0`}>
           {/* Sidebar Header */}
           <div className="p-4 border-b border-border-light flex flex-col gap-3">
             <h2 className="font-header-md text-header-md text-on-surface">Mensajes</h2>
@@ -338,7 +340,10 @@ export default function MessagesPage() {
               {conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  onClick={() => setSelectedConversationId(conv.id)}
+                  onClick={() => {
+                    setSelectedConversationId(conv.id)
+                    setMobileShowChat(true)
+                  }}
                   className={`group flex items-start gap-3 p-4 cursor-pointer relative border-l-4 transition-colors ${
                     selectedConversationId === conv.id
                       ? 'bg-bg-peach-soft border-primary-container'
@@ -407,12 +412,18 @@ export default function MessagesPage() {
         </aside>
 
         {/* Right Main Area: Active Chat */}
-        <section className="hidden md:flex flex-1 flex-col h-full bg-background relative">
+        <section className={`${mobileShowChat ? 'flex' : 'hidden'} md:flex flex-1 flex-col h-full bg-background relative`}>
           {selectedConversation ? (
             <>
               {/* Chat Header */}
               <header className="flex items-center justify-between p-4 bg-surface border-b border-border-light shadow-sm z-10 shrink-0">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setMobileShowChat(false)}
+                    className="md:hidden p-1 -ml-1 text-text-secondary hover:text-primary-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                  </button>
                   <Avatar
                     src={selectedConversation.other_user?.avatar_url}
                     name={selectedConversation.other_user?.full_name}
