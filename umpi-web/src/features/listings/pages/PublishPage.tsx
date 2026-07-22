@@ -49,8 +49,9 @@ export default function PublishPage() {
   const hasActivePlan =
     profile?.subscription_type != null &&
     profile.subscription_type !== '' &&
-    profile.subscription_expires_at != null &&
-    new Date(profile.subscription_expires_at) > new Date()
+    profile.subscription_type !== 'none' &&
+    // Trust subscription_type; only reject if expires_at exists and has passed
+    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
 
   const { data: featured, isLoading: featuredLoading, error: featuredError } =
     useFeaturedRemaining(hasActivePlan ? profile?.subscription_type : undefined)

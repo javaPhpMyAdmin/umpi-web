@@ -50,8 +50,8 @@ export default function PlansPage() {
     profile?.subscription_type &&
     profile.subscription_type !== '' &&
     profile.subscription_type !== 'none' &&
-    profile.subscription_expires_at &&
-    new Date(profile.subscription_expires_at) > new Date()
+    // Trust subscription_type; only reject if expires_at exists and has passed
+    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
 
   const createSubscription = useMutation({
     mutationFn: async (planId: string) => {
