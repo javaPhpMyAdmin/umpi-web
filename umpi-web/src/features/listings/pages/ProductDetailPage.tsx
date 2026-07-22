@@ -292,19 +292,30 @@ export default function ProductDetailPage() {
                         {seller.full_name || 'Publicador'}
                       </span>
                       <div className="flex items-center gap-1 text-sm">
-                        <div className="flex text-yellow-500">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <span key={i} className="material-symbols-outlined text-[16px] material-symbols-filled">
-                              {i < Math.round((listing.rating || 0)) ? 'star' : 'star_outline'}
-                            </span>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => setIsReviewsOpen(true)}
-                          className="text-text-secondary hover:text-primary-container underline underline-offset-2 cursor-pointer"
-                        >
-                           ({listing.reviews_count || 0} {(listing.reviews_count || 0) === 1 ? 'calificación' : 'calificaciones'})
-                        </button>
+                        {(listing.reviews_count || 0) > 0 ? (
+                          <>
+                            <div className="flex text-yellow-500">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <span key={i} className="material-symbols-outlined text-[16px] material-symbols-filled">
+                                  {i < Math.round(listing.rating || 0) ? 'star' : 'star_outline'}
+                                </span>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => setIsReviewsOpen(true)}
+                              className="text-text-secondary hover:text-primary-container underline underline-offset-2 cursor-pointer"
+                            >
+                              ({listing.reviews_count} {listing.reviews_count === 1 ? 'calificación' : 'calificaciones'})
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setIsReviewsOpen(true)}
+                            className="text-text-secondary hover:text-primary-container underline underline-offset-2 cursor-pointer"
+                          >
+                            Sin calificaciones aún
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

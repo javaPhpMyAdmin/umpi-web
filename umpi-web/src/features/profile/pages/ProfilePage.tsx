@@ -186,19 +186,27 @@ export default function ProfilePage() {
             <h2 className="font-section-title text-section-title text-on-surface mb-2">Reputación</h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-16 h-16 bg-bg-peach-soft rounded-full text-primary-container font-display-lg text-display-lg">
-                {profile?.rating?.toFixed(1) || '5.0'}
+                {profile?.rating ? profile.rating.toFixed(1) : '—'}
               </div>
               <div>
-                <div className="flex text-star-yellow mb-1">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="material-symbols-outlined material-symbols-filled">
-                      {i < Math.floor(profile?.rating || 5) ? 'star' : 'star_half'}
-                    </span>
-                  ))}
-                </div>
-                <p className="font-small-subtext text-small-subtext text-text-secondary">
-                  Basado en {profile?.reviews_count || 0} opiniones
-                </p>
+                {(profile?.reviews_count || 0) > 0 ? (
+                  <>
+                    <div className="flex text-star-yellow mb-1">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className="material-symbols-outlined material-symbols-filled">
+                          {i < Math.round(profile?.rating || 0) ? 'star' : 'star_outline'}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="font-small-subtext text-small-subtext text-text-secondary">
+                      Basado en {profile.reviews_count} opiniones
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-small-subtext text-small-subtext text-text-secondary">
+                    Sin opiniones aún
+                  </p>
+                )}
               </div>
             </div>
             <div className="h-px w-full bg-border-light my-2"></div>

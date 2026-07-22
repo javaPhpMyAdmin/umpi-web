@@ -72,7 +72,8 @@ export function useCreateReview() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reviews', variables.listingId] })
       queryClient.invalidateQueries({ queryKey: ['has-reviewed', variables.listingId] })
-      queryClient.invalidateQueries({ queryKey: ['listing', variables.listingId] })
+      queryClient.invalidateQueries({ queryKey: ['listings', variables.listingId] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
     },
   })
 }
