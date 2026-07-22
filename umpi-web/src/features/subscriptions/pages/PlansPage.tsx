@@ -34,8 +34,14 @@ export default function PlansPage() {
   useEffect(() => {
     const preapprovalId = searchParams.get('preapproval_id')
     if (preapprovalId && session) {
-      supabase.functions.invoke('sync-subscription').then(() => {
-        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] })
+      supabase.functions.invoke('sync-subscription').then(({ error }) => {
+        if (error) {
+          console.error('sync-subscription error:', error)
+        }
+        // Always invalidate profile cache so UI reflects current state
+        queryClient.invalidateQueries({ queryKey: ['auth'] })
+        // Clean URL params so re-renders don't re-trigger sync
+        window.history.replaceState({}, '', '/planes')
       })
     }
   }, [searchParams, session, queryClient])
