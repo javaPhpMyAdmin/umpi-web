@@ -294,9 +294,9 @@ export default function ProductDetailPage() {
                       <div className="flex items-center gap-1 text-sm">
                         {(listing.reviews_count || 0) > 0 ? (
                           <>
-                            <div className="flex text-yellow-500">
+                            <div className="flex">
                               {Array.from({ length: 5 }).map((_, i) => (
-                                <span key={i} className="material-symbols-outlined text-[16px] material-symbols-filled">
+                                <span key={i} className={`material-symbols-outlined text-[16px] ${i < Math.round(listing.rating || 0) ? 'material-symbols-filled text-yellow-500' : 'text-text-muted'}`}>
                                   {i < Math.round(listing.rating || 0) ? 'star' : 'star_outline'}
                                 </span>
                               ))}
@@ -386,9 +386,9 @@ export default function ProductDetailPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex text-yellow-500">
+                        <div className="flex">
                           {Array.from({ length: 5 }).map((_, i) => (
-                            <span key={i} className="material-symbols-outlined text-[16px] material-symbols-filled">
+                            <span key={i} className={`material-symbols-outlined text-[16px] ${i < review.rating ? 'material-symbols-filled text-yellow-500' : 'text-text-muted'}`}>
                               {i < review.rating ? 'star' : 'star_outline'}
                             </span>
                           ))}

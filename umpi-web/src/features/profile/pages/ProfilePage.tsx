@@ -191,9 +191,9 @@ export default function ProfilePage() {
               <div>
                 {(profile?.reviews_count || 0) > 0 ? (
                   <>
-                    <div className="flex text-star-yellow mb-1">
+                    <div className="flex mb-1">
                       {[...Array(5)].map((_, i) => (
-                        <span key={i} className="material-symbols-outlined material-symbols-filled">
+                        <span key={i} className={`material-symbols-outlined text-[18px] ${i < Math.round(profile?.rating || 0) ? 'material-symbols-filled text-star-yellow' : 'text-text-muted'}`}>
                           {i < Math.round(profile?.rating || 0) ? 'star' : 'star_outline'}
                         </span>
                       ))}
