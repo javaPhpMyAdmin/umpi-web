@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
+import { useAuth } from '../../../contexts/AuthContext'
+import { Link } from 'react-router-dom'
 import type { SubscriptionPlan } from '../../../types'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
@@ -23,6 +25,33 @@ function useSubscriptionPlans() {
 
 export default function PlansPage() {
   const { data: plans, isLoading } = useSubscriptionPlans()
+  const { session, profile } = useAuth()
+
+  const hasActivePlan =
+    profile?.subscription_type &&
+    profile.subscription_type !== '' &&
+    profile.subscription_type !== 'none' &&
+    profile.subscription_expires_at &&
+    new Date(profile.subscription_expires_at) > new Date()
+
+  const createSubscription = useMutation({
+    mutationFn: async (planId: string) => {
+      const { data, error } = await supabase.functions.invoke('create-subscription', {
+        body: {
+          plan_id: planId,
+          payer_email: 'test_user_906191175949745667@testuser.com',
+          back_url: 'https://umpi-web.vercel.app/planes',
+        },
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (data) => {
+      if (data?.init_point) {
+        window.location.href = data.init_point
+      }
+    },
+  })
 
   if (isLoading) {
     return (
@@ -104,15 +133,37 @@ export default function PlansPage() {
                         </li>
                       ))}
                     </ul>
-                    <button
-                      className={`w-full font-label-bold text-label-bold rounded-[14px] h-[56px] transition-colors active:scale-95 duration-200 mt-auto ${
-                        isPremium
-                          ? 'bg-primary-container text-on-primary hover:opacity-90'
-                          : 'bg-bg-peach-mid text-text-secondary hover:bg-[#FFD6BD]'
-                      }`}
-                    >
-                      Elegir {plan.name}
-                    </button>
+                    {!session ? (
+                      <Link
+                        to="/login"
+                        className={`w-full font-label-bold text-label-bold rounded-[14px] h-[56px] flex items-center justify-center transition-colors active:scale-95 duration-200 mt-auto ${
+                          isPremium
+                            ? 'bg-primary-container text-on-primary hover:opacity-90'
+                            : 'bg-bg-peach-mid text-text-secondary hover:bg-[#FFD6BD]'
+                        }`}
+                      >
+                        Iniciar sesión
+                      </Link>
+                    ) : hasActivePlan ? (
+                      <button
+                        disabled
+                        className="w-full font-label-bold text-label-bold rounded-[14px] h-[56px] bg-gray-300 text-gray-500 cursor-not-allowed mt-auto"
+                      >
+                        Plan activo
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => createSubscription.mutate(plan.id)}
+                        disabled={createSubscription.isPending}
+                        className={`w-full font-label-bold text-label-bold rounded-[14px] h-[56px] transition-colors active:scale-95 duration-200 mt-auto ${
+                          isPremium
+                            ? 'bg-primary-container text-on-primary hover:opacity-90'
+                            : 'bg-bg-peach-mid text-text-secondary hover:bg-[#FFD6BD]'
+                        } ${createSubscription.isPending ? 'opacity-50 cursor-wait' : ''}`}
+                      >
+                        {createSubscription.isPending ? 'Procesando...' : `Elegir ${plan.name}`}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -123,6 +174,14 @@ export default function PlansPage() {
             </div>
           )}
         </section>
+
+        {createSubscription.isError && (
+          <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop -mt-[48px]">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-[14px] p-lg text-center max-w-md mx-auto">
+              No se pudo procesar la suscripción. Intentá de nuevo más tarde.
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer />
