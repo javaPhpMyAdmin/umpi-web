@@ -250,7 +250,7 @@ export default function ProfilePage() {
             <div className="bg-surface p-4 rounded-xl shadow-card flex flex-col gap-1">
               <span className="material-symbols-outlined text-star-yellow text-[20px]">star</span>
               <span className="font-title-lg text-title-lg text-on-surface leading-tight">
-                {profile?.rating?.toFixed(1) || '5.0'}
+                {profile?.rating ? profile.rating.toFixed(1) : '—'}
               </span>
               <span className="font-small-subtext text-small-subtext text-text-secondary">Calificación</span>
             </div>
