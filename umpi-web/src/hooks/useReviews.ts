@@ -44,11 +44,27 @@ export function useCreateReview() {
   const { session } = useAuth()
 
   return useMutation({
-    mutationFn: async ({ listingId, rating }: { listingId: string; rating: number }) => {
+    mutationFn: async ({ listingId, sellerId, rating }: { listingId: string; sellerId: string; rating: number }) => {
       if (!session?.user?.id) throw new Error('Debes iniciar sesión')
+
+      // Find existing conversation between current user and seller for this listing
+      const { data: conv, error: convError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('listing_id', listingId)
+        .or(`user1_id.eq.${session.user.id},user2_id.eq.${session.user.id}`)
+        .or(`user1_id.eq.${sellerId},user2_id.eq.${sellerId}`)
+        .limit(1)
+        .maybeSingle()
+
+      if (convError || !conv?.id) {
+        throw new Error('Debes haber contactado al publicador antes de calificar')
+      }
+
       const { error } = await supabase.from('reviews').insert({
         listing_id: listingId,
         reviewer_id: session.user.id,
+        conversation_id: conv.id,
         rating,
       })
       if (error) throw error

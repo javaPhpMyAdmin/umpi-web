@@ -75,7 +75,7 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
               }`}
               onMouseEnter={() => setHoveredStar(starNumber)}
               onClick={() =>
-                createReview.mutate({ listingId, rating: starNumber })
+                createReview.mutate({ listingId, sellerId, rating: starNumber })
               }
               disabled={createReview.isPending}
               aria-label={`${starNumber} estrella${starNumber > 1 ? 's' : ''}`}
@@ -89,7 +89,9 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
         <p className="text-positive text-body-sm">¡Gracias por tu calificación!</p>
       )}
       {createReview.isError && (
-        <p className="text-error text-body-sm">No se pudo guardar la calificación</p>
+        <p className="text-error text-body-sm">
+          {createReview.error?.message || 'No se pudo guardar la calificación'}
+        </p>
       )}
     </div>
   )
