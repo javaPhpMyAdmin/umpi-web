@@ -199,7 +199,7 @@ export default function ProfilePage() {
                       ))}
                     </div>
                     <p className="font-small-subtext text-small-subtext text-text-secondary">
-                      Basado en {profile.reviews_count} opiniones
+                      Basado en {profile?.reviews_count || 0} opiniones
                     </p>
                   </>
                 ) : (
