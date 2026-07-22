@@ -11,7 +11,7 @@ interface ReviewFormProps {
 export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
   const { session } = useAuth()
   const { data: hasReviewed = false } = useHasReviewed(listingId)
-  const { data: reviews = [] } = useReviews(listingId)
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews(listingId)
   const createReview = useCreateReview()
   const [hoveredStar, setHoveredStar] = useState(0)
   const [selectedStar, setSelectedStar] = useState(0)
@@ -36,16 +36,16 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
     return null
   }
 
-  // Already reviewed — show read-only stars
-  if (hasReviewed) {
+  // Already reviewed — show read-only stars (wait for reviews to load first)
+  if (hasReviewed && !reviewsLoading) {
     const myReview = reviews.find(r => r.reviewer_id === session.user?.id)
     const myRating = myReview?.rating ?? 0
     return (
       <div className="flex flex-col items-center gap-xs py-md">
         <p className="text-text-secondary text-body-sm">Ya calificaste esta publicación</p>
-        <div className="flex text-yellow-500">
+        <div className="flex">
           {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i} className="material-symbols-outlined text-[20px] material-symbols-filled">
+            <span key={i} className={`material-symbols-outlined text-[20px] ${i < myRating ? 'material-symbols-filled text-yellow-500' : 'text-text-muted'}`}>
               {i < myRating ? 'star' : 'star_outline'}
             </span>
           ))}
