@@ -14,6 +14,7 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
   const { data: reviews = [] } = useReviews(listingId)
   const createReview = useCreateReview()
   const [hoveredStar, setHoveredStar] = useState(0)
+  const [selectedStar, setSelectedStar] = useState(0)
 
   // Not logged in
   if (!session?.user) {
@@ -63,7 +64,9 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
       >
         {Array.from({ length: 5 }).map((_, i) => {
           const starNumber = i + 1
-          const isFilled = starNumber <= (hoveredStar || 0)
+          const isFilled = selectedStar > 0
+            ? starNumber <= selectedStar
+            : starNumber <= hoveredStar
           return (
             <button
               key={i}
@@ -73,11 +76,13 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
                   ? 'material-symbols-filled text-yellow-500'
                   : 'text-text-muted hover:text-yellow-400'
               }`}
-              onMouseEnter={() => setHoveredStar(starNumber)}
-              onClick={() =>
+              onMouseEnter={() => { if (!selectedStar) setHoveredStar(starNumber) }}
+              onClick={() => {
+                if (selectedStar || createReview.isPending) return
+                setSelectedStar(starNumber)
                 createReview.mutate({ listingId, sellerId, rating: starNumber })
-              }
-              disabled={createReview.isPending}
+              }}
+              disabled={createReview.isPending || selectedStar > 0}
               aria-label={`${starNumber} estrella${starNumber > 1 ? 's' : ''}`}
             >
               {isFilled ? 'star' : 'star_outline'}
@@ -85,6 +90,9 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
           )
         })}
       </div>
+      {createReview.isPending && (
+        <p className="text-text-muted text-body-sm">Enviando...</p>
+      )}
       {createReview.isSuccess && (
         <p className="text-positive text-body-sm">¡Gracias por tu calificación!</p>
       )}
