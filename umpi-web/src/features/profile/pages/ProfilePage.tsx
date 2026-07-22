@@ -36,14 +36,7 @@ export default function ProfilePage() {
 
   const cancelSubscription = useMutation({
     mutationFn: async () => {
-      if (!session?.user?.id) throw new Error('No user')
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          subscription_type: '',
-          subscription_expires_at: null,
-        })
-        .eq('id', session.user.id)
+      const { error } = await supabase.functions.invoke('cancel-subscription')
       if (error) throw error
     },
     onSuccess: () => {
