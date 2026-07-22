@@ -10,11 +10,13 @@ interface ReviewFormProps {
 
 export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
   const { session } = useAuth()
-  const { data: hasReviewed = false } = useHasReviewed(listingId)
+  const { data: hasReviewed = false, isLoading: hasReviewedLoading } = useHasReviewed(listingId)
   const { data: reviews = [], isLoading: reviewsLoading } = useReviews(listingId)
   const createReview = useCreateReview()
   const [hoveredStar, setHoveredStar] = useState(0)
   const [selectedStar, setSelectedStar] = useState(0)
+
+  const isLoading = hasReviewedLoading || reviewsLoading
 
   // Not logged in
   if (!session?.user) {
@@ -36,8 +38,22 @@ export default function ReviewForm({ listingId, sellerId }: ReviewFormProps) {
     return null
   }
 
-  // Already reviewed — show read-only stars (wait for reviews to load first)
-  if (hasReviewed && !reviewsLoading) {
+  // Loading — skeleton while determining review state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center gap-xs py-md animate-pulse">
+        <div className="h-4 w-48 bg-border-light rounded" />
+        <div className="flex gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="w-5 h-5 bg-border-light rounded" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Already reviewed — show read-only stars
+  if (hasReviewed) {
     const myReview = reviews.find(r => r.reviewer_id === session.user?.id)
     const myRating = myReview?.rating ?? 0
     return (
