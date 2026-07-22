@@ -48,8 +48,8 @@ export default function ProfilePage() {
   const subscriptionInfo = (() => {
     const type = profile?.subscription_type
     if (!type || type === 'none' || type === '') return null
-    // Also require a valid expiry date
-    if (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) <= new Date()) return null
+    // If expires_at exists, check it hasn't passed; otherwise trust subscription_type
+    if (profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date()) return null
     switch (type) {
       case 'premium':
         return { label: 'Premium', price: '$30.000/mes', icon: 'star', color: 'bg-primary-container text-white' }
