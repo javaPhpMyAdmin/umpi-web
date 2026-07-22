@@ -1,7 +1,8 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect } from 'react'
 import type { SubscriptionPlan } from '../../../types'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
@@ -26,6 +27,18 @@ function useSubscriptionPlans() {
 export default function PlansPage() {
   const { data: plans, isLoading } = useSubscriptionPlans()
   const { session, profile } = useAuth()
+  const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+
+  // After MercadoPago redirect, sync subscription status
+  useEffect(() => {
+    const preapprovalId = searchParams.get('preapproval_id')
+    if (preapprovalId && session) {
+      supabase.functions.invoke('sync-subscription').then(() => {
+        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] })
+      })
+    }
+  }, [searchParams, session, queryClient])
 
   const hasActivePlan =
     profile?.subscription_type &&
