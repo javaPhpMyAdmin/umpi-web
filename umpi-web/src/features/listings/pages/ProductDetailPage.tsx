@@ -8,6 +8,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { useListing } from '../../../hooks/useListings'
 import { useProfile } from '../../../hooks/useProfile'
 import { useReviews } from '../../../hooks/useReviews'
+import ReviewForm from '../../../components/ui/ReviewForm'
 import { useCategories } from '../../../hooks/useCategories'
 import { formatPrice } from '../../../lib/utils'
 import { supabase } from '../../../lib/supabase'
@@ -191,9 +192,9 @@ export default function ProductDetailPage() {
                         </button>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
+              )}
+            </div>
+          </div>
             )}
 
             {/* Zoom Modal */}
@@ -382,13 +383,15 @@ export default function ProductDetailPage() {
                           ))}
                         </div>
                       </div>
-                      <div className="border-t border-border-light pt-md">
-                        <p className="text-text-secondary text-body-base">{review.comment}</p>
-                      </div>
                     </div>
                   )
                 })
               )}
+            </div>
+
+            {/* Review Form */}
+            <div className="border-t border-border-light p-lg shrink-0">
+              <ReviewForm listingId={listing.id} sellerId={listing.user_id} />
             </div>
           </div>
         </div>
