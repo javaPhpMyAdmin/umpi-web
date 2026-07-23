@@ -126,26 +126,38 @@ export function useDeleteNotification() {
 }
 
 /**
- * Mark message notification as read when user opens the conversation directly.
- * Finds the unread message notification for a given conversation_id and marks it read.
+ * Mark message notification as read AND update conversation read timestamp
+ * when user opens the conversation directly.
+ *
+ * 1. Marks unread message notifications as read (existing behavior)
+ * 2. Calls mark_conversation_read RPC to update userX_last_read_at (enables blue ticks)
  */
 export function useMarkMessageReadByConversation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ userId, conversationId }: { userId: string; conversationId: string }) => {
-      const { error } = await supabase
+      // Mark notifications as read
+      const { error: notifError } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', userId)
         .eq('type', 'message')
         .eq('is_read', false)
         .contains('data', { conversation_id: conversationId })
-      if (error) throw error
+      if (notifError) throw notifError
+
+      // Update conversation read timestamp (for blue ticks)
+      const { error: convError } = await supabase.rpc('mark_conversation_read', {
+        conv_id: conversationId,
+        p_user_id: userId,
+      })
+      if (convError) throw convError
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificationCount'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
     },
   })
 }

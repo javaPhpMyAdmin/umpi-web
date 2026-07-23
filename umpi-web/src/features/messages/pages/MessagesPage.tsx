@@ -9,8 +9,10 @@ import Modal from '../../../components/ui/Modal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useRealtimeMessages } from '../../../hooks/useRealtimeMessages'
 import { useRealtimeConversations } from '../../../hooks/useRealtimeConversations'
+import { useRealtimeReadReceipts } from '../../../hooks/useRealtimeReadReceipts'
 import { useMarkMessageReadByConversation } from '../../../hooks/useNotifications'
 import { timeAgo } from '../../../lib/utils'
+import MessageTick from '../components/MessageTick'
 
 const CONV_PAGE_SIZE = 30
 
@@ -206,6 +208,8 @@ export default function MessagesPage() {
   useRealtimeMessages(selectedConversationId)
   // Realtime: conversations list reorders when new messages arrive
   useRealtimeConversations(session?.user?.id || null)
+  // Realtime: ticks flip to blue when other user reads the conversation
+  useRealtimeReadReceipts(selectedConversationId, session?.user?.id || null)
 
   // Open conversation from notification URL param
   useEffect(() => {
@@ -304,6 +308,13 @@ export default function MessagesPage() {
       </div>
     )
   }
+
+  // Determine the other user's last_read_at for tick rendering
+  const otherUserLastReadAt = selectedConversation
+    ? selectedConversation.user1_id === session.user.id
+      ? selectedConversation.user2_last_read_at
+      : selectedConversation.user1_last_read_at
+    : null
 
   return (
     <div className="bg-background text-on-background font-body-base text-body-base antialiased h-screen flex flex-col overflow-hidden">
@@ -494,11 +505,19 @@ export default function MessagesPage() {
                           >
                             <p className="font-body-base text-body-base">{msg.content}</p>
                             <span
-                              className={`font-small-subtext text-small-subtext self-end ${
+                              className={`font-small-subtext text-small-subtext self-end flex items-center ${
                                 isMe ? 'text-bg-peach-mid' : 'text-text-muted'
                               }`}
                             >
                               {timeAgo(msg.created_at)}
+                              {isMe && (
+                                <MessageTick
+                                  isRead={Boolean(
+                                    otherUserLastReadAt &&
+                                      new Date(msg.created_at) <= new Date(otherUserLastReadAt)
+                                  )}
+                                />
+                              )}
                             </span>
                           </div>
                         </div>
