@@ -121,7 +121,7 @@ export default function HomePage() {
             <h2 className="font-section-title text-section-title text-on-surface">
               Avisos Destacados
             </h2>
-            {showFeatured && (
+            {showFeatured && featuredListings!.length >= 6 && (
               <Link to="/destacados" className="font-label-bold text-label-bold text-primary-container hover:text-primary-dark transition-colors">
                 Ver todos
               </Link>
