@@ -376,7 +376,18 @@ export default function ProductDetailPage() {
                       <p>{listing.location || seller.location}</p>
                     </div>
                   )}
-                  {/* Badges */}
+                  {/* Trusted publisher badge */}
+                  {(seller.rating || 0) >= 4 && (seller.reviews_count || 0) > 0 && (
+                    <div className="flex items-center gap-3 pt-2 border-t border-border-light">
+                      <div className="bg-secondary-container text-on-secondary-container p-2 rounded-lg">
+                        <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
+                      </div>
+                      <div>
+                        <p className="font-label-bold text-label-bold text-on-surface text-sm">Publicador Confiable</p>
+                        <p className="text-text-secondary text-xs">Destacado por la comunidad</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -208,20 +208,24 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-            <div className="h-px w-full bg-border-light my-2"></div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="bg-secondary-container text-on-secondary-container p-2 rounded-lg">
-                  <span className="material-symbols-outlined">workspace_premium</span>
+            {((data.rating || 0) >= 4 && (data.reviews_count || 0) > 0) && (
+              <>
+                <div className="h-px w-full bg-border-light my-2"></div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-secondary-container text-on-secondary-container p-2 rounded-lg">
+                      <span className="material-symbols-outlined">workspace_premium</span>
+                    </div>
+                    <div>
+                      <p className="font-label-bold text-label-bold text-on-surface">Publicador Confiable</p>
+                      <p className="font-small-subtext text-small-subtext text-text-secondary">
+                        Destacado por la comunidad
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-label-bold text-label-bold text-on-surface">Publicador Confiable</p>
-                  <p className="font-small-subtext text-small-subtext text-text-secondary">
-                    Destacado por la comunidad
-                  </p>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </aside>
 
