@@ -28,7 +28,9 @@ export function useNotificationCount(userId: string | undefined) {
       return count ?? 0
     },
     enabled: !!userId,
-    staleTime: 30_000,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
 }
 
