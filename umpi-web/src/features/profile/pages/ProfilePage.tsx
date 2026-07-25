@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
@@ -17,6 +17,20 @@ export default function ProfilePage() {
   const { session, profile, isLoading: loadingAuth } = useAuth()
   const queryClient = useQueryClient()
   const userId = session?.user?.id || ''
+
+  // Fetch total views for this user
+  const { data: totalViews = 0 } = useQuery({
+    queryKey: ['user-views', userId],
+    queryFn: async () => {
+      if (!userId) return 0
+      const { data, error } = await supabase.rpc('get_user_views', { p_user_id: userId })
+      if (error) return 0
+      return data as number
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  })
+
   const { data: pagesData, isLoading: loadingListings, hasNextPage, isFetchingNextPage, fetchNextPage, deleteListing, isDeleting } = useUserListings(userId)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
   const [cancelSubTarget, setCancelSubTarget] = useState(false)
@@ -235,13 +249,10 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-surface p-4 rounded-xl shadow-card flex flex-col gap-1">
               <span className="material-symbols-outlined text-text-secondary text-[20px]">visibility</span>
-              <span className="font-title-lg text-title-lg text-on-surface leading-tight">1,245</span>
+              <span className="font-title-lg text-title-lg text-on-surface leading-tight">
+                {totalViews.toLocaleString('es-AR')}
+              </span>
               <span className="font-small-subtext text-small-subtext text-text-secondary">Vistas totales</span>
-            </div>
-            <div className="bg-surface p-4 rounded-xl shadow-card flex flex-col gap-1">
-              <span className="material-symbols-outlined text-text-secondary text-[20px]">ads_click</span>
-              <span className="font-title-lg text-title-lg text-on-surface leading-tight">342</span>
-              <span className="font-small-subtext text-small-subtext text-text-secondary">Clics en avisos</span>
             </div>
             <div className="bg-surface p-4 rounded-xl shadow-card flex flex-col gap-1">
               <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>

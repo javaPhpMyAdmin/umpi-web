@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import Navbar from '../../../components/layout/Navbar'
@@ -60,6 +60,14 @@ export default function ProductDetailPage() {
   const [isZoomOpen, setIsZoomOpen] = useState(false)
   const [isReviewsOpen, setIsReviewsOpen] = useState(false)
   const [contacting, setContacting] = useState(false)
+
+  // ── Record view (fire-and-forget) ────────────────────────────────────────
+  useEffect(() => {
+    if (!listing?.id) return
+    supabase.rpc('record_listing_view', { p_listing_id: listing.id })
+      .then(() => {})
+      .catch(() => {})
+  }, [listing?.id])
 
   // ── Contact: find or create conversation ──────────────────────────────────
   const handleContact = async () => {
