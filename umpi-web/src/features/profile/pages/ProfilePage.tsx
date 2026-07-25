@@ -19,13 +19,17 @@ export default function ProfilePage() {
   const userId = session?.user?.id || ''
 
   // Fetch total views for this user
-  const { data: totalViews = 0 } = useQuery({
+  const { data: totalViews = 0 } = useQuery<number>({
     queryKey: ['user-views', userId],
     queryFn: async () => {
       if (!userId) return 0
-      const { data, error } = await supabase.rpc('get_user_views', { p_user_id: userId })
-      if (error) return 0
-      return data as number
+      try {
+        const { data, error } = await supabase.rpc('get_user_views', { p_user_id: userId })
+        if (error || data == null) return 0
+        return Number(data) || 0
+      } catch {
+        return 0
+      }
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
