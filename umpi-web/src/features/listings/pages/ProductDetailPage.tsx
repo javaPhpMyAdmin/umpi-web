@@ -237,9 +237,20 @@ export default function ProductDetailPage() {
                   <span className="text-small-subtext text-text-secondary uppercase tracking-wider">
                     {listing.is_featured ? 'Destacado' : 'Publicación'} • {category?.name || 'Sin categoría'}
                   </span>
-                  <h1 className="font-title-lg text-title-lg text-on-surface">
-                    {listing.title}
-                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <h1 className="font-title-lg text-title-lg text-on-surface">
+                      {listing.title}
+                    </h1>
+                    {listing.condition && (
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
+                        listing.condition === 'new'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {listing.condition === 'new' ? 'Nuevo' : 'Usado'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Price */}

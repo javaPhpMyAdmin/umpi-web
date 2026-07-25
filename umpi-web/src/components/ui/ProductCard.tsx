@@ -25,6 +25,13 @@ export default function ProductCard({ listing }: ProductCardProps) {
             Destacado
           </div>
         )}
+        {listing.condition && (
+          <div className={`absolute top-2 ${listing.is_featured ? 'left-[82px]' : 'left-2'} flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold shadow-md ${
+            listing.condition === 'new' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
+          }`}>
+            {listing.condition === 'new' ? 'Nuevo' : 'Usado'}
+          </div>
+        )}
         <button className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-text-secondary hover:text-error-red transition-colors z-10">
           <span className="material-symbols-outlined text-[18px]">favorite</span>
         </button>
