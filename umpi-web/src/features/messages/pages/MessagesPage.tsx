@@ -205,7 +205,7 @@ export default function MessagesPage() {
   }, [hasMoreMessages, msgsQuery])
 
   // Realtime: messages appear instantly in the active conversation
-  useRealtimeMessages(selectedConversationId)
+  const realtimeStatus = useRealtimeMessages(selectedConversationId)
   // Realtime: conversations list reorders when new messages arrive
   useRealtimeConversations(session?.user?.id || null)
   // Realtime: ticks flip to blue when other user reads the conversation
@@ -453,6 +453,18 @@ export default function MessagesPage() {
                     <h3 className="font-section-title text-section-title text-on-surface">
                       {selectedConversation.other_user?.full_name || 'Usuario'}
                     </h3>
+                    {realtimeStatus !== 'connected' && selectedConversationId && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          realtimeStatus === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                        }`} />
+                        <span className="text-xs text-text-muted">
+                          {realtimeStatus === 'connecting' && 'Conectando...'}
+                          {realtimeStatus === 'reconnecting' && 'Reconectando...'}
+                          {realtimeStatus === 'disconnected' && 'Sin conexión — los mensajes se enviarán cuando vuelvas a conectarte'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
