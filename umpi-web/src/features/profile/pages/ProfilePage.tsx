@@ -208,7 +208,7 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-            {((data.rating || 0) >= 4 && (data.reviews_count || 0) > 0) && (
+            {((profile?.rating || 0) >= 4 && (profile?.reviews_count || 0) > 0) && (
               <>
                 <div className="h-px w-full bg-border-light my-2"></div>
                 <div className="flex justify-between items-center">
