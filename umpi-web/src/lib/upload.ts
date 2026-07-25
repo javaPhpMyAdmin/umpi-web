@@ -9,7 +9,7 @@ import { supabase } from './supabase'
 
 const BUCKET = 'listing-images'
 const MAX_SIZE_MB = 10
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 
 function generateFilePath(userId: string, ext: string): string {
   const name = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
@@ -46,13 +46,13 @@ async function compressImage(file: File): Promise<File> {
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
           } else {
             resolve(file) // fallback to original
           }
         },
-        'image/jpeg',
-        0.8
+        'image/webp',
+        0.82
       )
     }
 

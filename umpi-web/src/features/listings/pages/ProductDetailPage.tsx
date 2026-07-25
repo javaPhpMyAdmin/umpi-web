@@ -319,18 +319,14 @@ export default function ProductDetailPage() {
                       </div>
                     </div>
                   </div>
+                  {/* Location inside seller card */}
+                  {(listing.location || seller.location) && (
+                    <div className="flex items-center gap-2 text-text-secondary font-body-base text-body-base pt-2 border-t border-border-light">
+                      <span className="material-symbols-outlined text-[18px]">location_on</span>
+                      <p>{listing.location || seller.location}</p>
+                    </div>
+                  )}
                   {/* Badges */}
-                </div>
-              )}
-
-              {/* Location */}
-              {listing.location && (
-                <div className="bg-surface rounded-xl p-lg shadow-sm border border-border-light flex flex-col gap-md">
-                  <h3 className="font-section-title text-section-title text-on-surface">Ubicación</h3>
-                  <div className="flex items-start gap-2 text-text-secondary font-body-base text-body-base">
-                    <span className="material-symbols-outlined mt-0.5">location_on</span>
-                    <p>{listing.location}</p>
-                  </div>
                 </div>
               )}
             </div>
