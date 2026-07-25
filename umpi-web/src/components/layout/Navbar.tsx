@@ -264,7 +264,12 @@ export default function Navbar() {
                 }`}
               >
                 <span className="material-symbols-outlined text-[22px]">{link.icon}</span>
-                <span className="font-body-base text-[15px]">{link.label}</span>
+                <span className="font-body-base text-[15px] flex-1">{link.label}</span>
+                {link.to === '/notificaciones' && unreadCount != null && unreadCount > 0 && (
+                  <span className="bg-[#E8752A] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             )
           })}
