@@ -17,10 +17,37 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const { data: listing, isLoading, error } = useListing(id || '')
   const { data: seller } = useProfile(listing?.user_id)
   const { data: categories } = useCategories()
+
+  const isAdmin = profile?.is_admin === true
+  const isOwner = session?.user?.id === listing?.user_id
+
+  // ── Admin delete ──────────────────────────────────────────
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleAdminDelete = async () => {
+    if (!listing || !isAdmin) return
+    setDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('listings')
+        .delete()
+        .eq('id', listing.id)
+
+      if (error) throw error
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      navigate('/')
+    } catch (err) {
+      console.error('Error deleting listing:', err)
+    } finally {
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
 
   // Resolve category from cache (avoids N+1 JOIN in query)
   const category = useMemo(() => {
@@ -262,7 +289,15 @@ export default function ProductDetailPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3 mt-md">
-                  {session?.user?.id !== listing.user_id ? (
+                  {isOwner ? (
+                    <Link
+                      to={`/editar/${listing.id}`}
+                      className="w-full h-[56px] bg-primary-container text-on-primary font-label-bold text-label-bold rounded-xl hover:bg-primary-dark transition-colors shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined">edit</span>
+                      Editar mi aviso
+                    </Link>
+                  ) : (
                     <button
                       onClick={handleContact}
                       disabled={contacting}
@@ -271,15 +306,19 @@ export default function ProductDetailPage() {
                       <span className="material-symbols-outlined">chat</span>
                       {contacting ? 'Abriendo...' : 'Contactar'}
                     </button>
-                  ) : (
-                    <Link
-                      to={`/editar/${listing.id}`}
-                      className="w-full h-[56px] bg-primary-container text-on-primary font-label-bold text-label-bold rounded-xl hover:bg-primary-dark transition-colors shadow-sm flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined">edit</span>
-                      Editar mi aviso
-                    </Link>
                   )}
+
+                  {/* Admin delete button */}
+                  {isAdmin && !isOwner && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-full h-[48px] bg-red-50 text-red-600 border border-red-200 font-label-bold text-label-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2 active:scale-95 duration-150"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                      Eliminar publicación
+                    </button>
+                  )}
+
                   <button className="w-full h-[48px] bg-bg-peach-soft text-primary-dark font-label-bold text-label-bold rounded-xl hover:bg-bg-peach-mid transition-colors flex items-center justify-center gap-2 active:scale-95 duration-150">
                     <span className="material-symbols-outlined">favorite_border</span>
                     Guardar en favoritos
@@ -410,6 +449,44 @@ export default function ProductDetailPage() {
             {/* Review Form */}
             <div className="border-t border-border-light p-lg shrink-0">
               <ReviewForm listingId={listing.id} sellerId={listing.user_id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (admin) */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center md:items-center"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-surface rounded-t-[20px] md:rounded-[20px] shadow-xl w-full max-w-md p-lg flex flex-col gap-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-red-600">warning</span>
+              </div>
+              <h3 className="font-header-md text-header-md text-on-surface">Eliminar publicación</h3>
+            </div>
+            <p className="font-body-base text-body-base text-text-secondary">
+              ¿Seguro que querés eliminar "<strong>{listing.title}</strong>"? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-[48px] bg-surface-container-low text-on-surface font-label-bold text-label-bold rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAdminDelete}
+                disabled={deleting}
+                className="flex-1 h-[48px] bg-red-600 text-white font-label-bold text-label-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
             </div>
           </div>
         </div>
