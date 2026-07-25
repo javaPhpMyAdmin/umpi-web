@@ -291,6 +291,15 @@ export default function MessagesPage() {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (newMessage.trim()) {
+        sendMessageMutation.mutate(newMessage.trim())
+      }
+    }
+  }
+
   const selectedConversation = conversations?.find((c) => c.id === selectedConversationId)
 
   if (!session) {
@@ -546,6 +555,7 @@ export default function MessagesPage() {
                     rows={1}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     style={{ minHeight: '40px' }}
                   ></textarea>
                   <button
