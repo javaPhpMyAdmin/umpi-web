@@ -35,7 +35,7 @@ export default function ProductDetailPage() {
     try {
       const { error } = await supabase
         .from('listings')
-        .delete()
+        .update({ status: 'deleted' })
         .eq('id', listing.id)
 
       if (error) throw error

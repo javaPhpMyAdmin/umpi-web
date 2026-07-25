@@ -35,14 +35,15 @@ DO $$ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL; END $$;
 
 -- ============================================================
--- ADMIN SELECT POLICY: admins can see all listings (even inactive)
+-- ADMIN SELECT POLICY: admins can see all listings (including deleted)
 -- ============================================================
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Admins can view all listings" ON listings;
   CREATE POLICY "Admins can view all listings"
     ON listings FOR SELECT
     USING (
-      EXISTS (
+      status = 'active' OR user_id = auth.uid()
+      OR EXISTS (
         SELECT 1 FROM profiles
         WHERE profiles.id = auth.uid()
           AND profiles.is_admin = true
