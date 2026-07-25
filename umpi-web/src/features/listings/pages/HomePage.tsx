@@ -164,7 +164,16 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="flex flex-col items-center justify-center py-xl text-center">
+              <span className="material-symbols-outlined text-text-muted text-[40px] mb-sm">star</span>
+              <p className="font-body-base text-body-base text-text-secondary mb-1">No hay avisos destacados por el momento</p>
+              <p className="font-small-subtext text-small-subtext text-text-muted">Suscribite a un plan para destacar tus publicaciones</p>
+              <Link to="/planes" className="mt-md h-[40px] px-lg rounded-[14px] bg-primary-container text-white font-label-bold text-label-bold hover:bg-primary-dark transition-colors inline-flex items-center">
+                Ver Planes
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* Recommended — skeleton while loading, cards when ready */}

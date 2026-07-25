@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import { useAuth } from '../../../contexts/AuthContext'
+import { validatePassword } from '../../../lib/utils'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
@@ -14,12 +15,19 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const { register, loginWithGoogle, isRegistering, isLoggingInWithGoogle, registerError } = useAuth()
 
+  const passwordStrength = useMemo(() => validatePassword(password), [password])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden')
+      return
+    }
+
+    if (!passwordStrength.valid) {
+      setError('La contraseña no cumple los requisitos de seguridad')
       return
     }
 
@@ -119,6 +127,40 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
+
+            {/* Password Strength Indicator */}
+            {password.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-[-4px]">
+                <div className="flex gap-1">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < passwordStrength.score
+                          ? passwordStrength.score <= 1
+                            ? 'bg-error-red'
+                            : passwordStrength.score === 2
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                          : 'bg-border-light'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {passwordStrength.checks.map((check, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className={`material-symbols-outlined text-[14px] ${check.passed ? 'text-green-500' : 'text-text-muted'}`}>
+                        {check.passed ? 'check_circle' : 'radio_button_unchecked'}
+                      </span>
+                      <span className={`text-[12px] ${check.passed ? 'text-green-600' : 'text-text-muted'}`}>
+                        {check.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Confirm Password */}
             <div className="flex flex-col gap-sm">

@@ -37,6 +37,7 @@ const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'))
 const AuthCallbackPage = lazy(() => import('../features/auth/pages/AuthCallbackPage'))
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'))
+const AccountSettingsPage = lazy(() => import('../features/profile/pages/AccountSettingsPage'))
 const PlansPage = lazy(() => import('../features/subscriptions/pages/PlansPage'))
 const PublishPage = lazy(() => import('../features/listings/pages/PublishPage'))
 const EditPage = lazy(() => import('../features/listings/pages/EditPage'))
@@ -91,6 +92,7 @@ export default function AppProviders() {
 
               {/* ── Protected pages (redirect to /login if not authenticated) */}
               <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/perfil/configuracion" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
               <Route path="/publicar" element={<ProtectedRoute><PublishPage /></ProtectedRoute>} />
               <Route path="/editar/:id" element={<ProtectedRoute><EditPage /></ProtectedRoute>} />
               <Route path="/mensajes" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />

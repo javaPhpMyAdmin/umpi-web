@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../../components/layout/Navbar'
@@ -13,6 +13,7 @@ import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
 import { formatPrice } from '../../../lib/utils'
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { session, profile, isLoading: loadingAuth } = useAuth()
   const queryClient = useQueryClient()
   const userId = session?.user?.id || ''
@@ -119,7 +120,10 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex w-full gap-3">
-              <button className="w-full h-[48px] px-lg rounded-[14px] bg-bg-peach-soft text-primary-dark font-label-bold text-label-bold hover:bg-bg-peach-mid transition-colors flex items-center justify-center gap-xs">
+              <button
+                onClick={() => navigate('/perfil/configuracion')}
+                className="w-full h-[48px] px-lg rounded-[14px] bg-bg-peach-soft text-primary-dark font-label-bold text-label-bold hover:bg-bg-peach-mid transition-colors flex items-center justify-center gap-xs"
+              >
                 <span className="material-symbols-outlined">settings</span>
                 Configuración de Cuenta
               </button>
@@ -199,7 +203,7 @@ export default function ProfilePage() {
                   </>
                 ) : (
                   <p className="font-small-subtext text-small-subtext text-text-secondary">
-                    Sin opiniones aún
+                    Sin calificaciones
                   </p>
                 )}
               </div>

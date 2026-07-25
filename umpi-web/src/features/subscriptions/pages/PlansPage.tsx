@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { SubscriptionPlan } from '../../../types'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
@@ -29,6 +29,7 @@ export default function PlansPage() {
   const { session, profile } = useAuth()
   const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const [syncResult, setSyncResult] = useState<string | null>(null)
 
   // After MercadoPago redirect, sync subscription status
   useEffect(() => {
@@ -59,7 +60,7 @@ export default function PlansPage() {
         body: {
           plan_id: planId,
           payer_email: 'test_user_906191175949745667@testuser.com',
-          back_url: 'https://umpi-web.vercel.app/planes',
+          back_url: `${window.location.origin}/planes`,
         },
       })
       if (error) throw error
@@ -69,6 +70,21 @@ export default function PlansPage() {
       if (data?.init_point) {
         window.location.href = data.init_point
       }
+    },
+  })
+
+  const syncSubscription = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-subscription')
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] })
+      setSyncResult('¡Suscripción sincronizada! Recargá la página.')
+    },
+    onError: () => {
+      setSyncResult('No se pudo sincronizar. Verificá que hayas completado el pago.')
     },
   })
 
@@ -92,7 +108,7 @@ export default function PlansPage() {
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop pt-[64px] pb-xxl text-center">
           <h1 className="font-display-lg text-display-lg text-text-deep mb-lg">
-            Impulsa tus ventas con Umpi
+            Impulsa tus publicaciones con Umpi
           </h1>
           <p className="font-header-md text-header-md text-text-secondary max-w-2xl mx-auto font-normal">
             Elige el plan que mejor se adapte a tus necesidades
@@ -100,22 +116,22 @@ export default function PlansPage() {
         </section>
 
         {/* Pricing Cards */}
-        <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mb-[80px]">
+        <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mb-[80px] mt-xl">
           {plans && plans.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-xl md:gap-gutter max-w-4xl mx-auto">
-              {plans.map((plan) => {
-                const isPremium = plan.slug === 'premium' || plan.listing_priority > 0
+              {[...plans].reverse().map((plan) => {
+                const isPremium = plan.slug === 'premium'
                 return (
                   <div
                     key={plan.id}
                     className={`bg-surface rounded-[16px] p-xl flex flex-col h-full relative ${
                       isPremium
-                        ? 'shadow-card-featured border-2 border-primary-container transform md:-translate-y-4'
-                        : 'shadow-card border border-border-light'
+                        ? 'shadow-card-featured border-[3px] border-gold-premium'
+                        : 'shadow-card border-[3px] border-border-light'
                     }`}
                   >
                     {isPremium && (
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary-container text-on-primary font-label-bold text-label-bold px-lg py-unit rounded-full">
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gold-premium text-white font-label-bold text-label-bold px-lg py-unit rounded-full">
                         Más Popular
                       </div>
                     )}
@@ -129,7 +145,7 @@ export default function PlansPage() {
                         )}
                       </h3>
                       <p className="font-body-base text-body-base text-text-secondary mt-sm">
-                        {isPremium ? 'Máximo rendimiento y soporte.' : 'Ideal para empezar a vender.'}
+                        {isPremium ? 'Máximo rendimiento y soporte.' : 'Ideal para empezar a destacar.'}
                       </p>
                     </div>
                     <div className="mb-xxl">
@@ -199,6 +215,23 @@ export default function PlansPage() {
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-[14px] p-lg text-center max-w-md mx-auto">
               No se pudo procesar la suscripción. Intentá de nuevo más tarde.
             </div>
+          </section>
+        )}
+
+        {session && !hasActivePlan && (
+          <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mt-lg text-center">
+            <button
+              onClick={() => { setSyncResult(null); syncSubscription.mutate() }}
+              disabled={syncSubscription.isPending}
+              className="text-sm text-text-secondary underline hover:text-text-deep transition-colors disabled:opacity-50"
+            >
+              {syncSubscription.isPending ? 'Sincronizando...' : 'Ya pagué, verificar mi suscripción'}
+            </button>
+            {syncResult && (
+              <p className={`mt-sm text-sm ${syncResult.includes('¡') ? 'text-green-600' : 'text-red-600'}`}>
+                {syncResult}
+              </p>
+            )}
           </section>
         )}
       </main>

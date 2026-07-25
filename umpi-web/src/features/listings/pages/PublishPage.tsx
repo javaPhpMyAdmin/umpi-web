@@ -204,6 +204,7 @@ export default function PublishPage() {
             price: price ? parseFloat(price) : null,
             category_id: categoryId || null,
             city_id: cityId || null,
+            location: cityOptions.find((c) => c.value === cityId)?.label || null,
             condition: categorySupportsCondition ? condition : null,
             status: 'active',
             images: imageUrls,

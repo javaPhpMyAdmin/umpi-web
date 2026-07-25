@@ -16,6 +16,31 @@ export function formatDate(date: string): string {
   }).format(new Date(date))
 }
 
+// ── Password validation ──────────────────────────────────────────────────────
+export interface PasswordStrength {
+  valid: boolean
+  score: number // 0-4
+  label: string
+  checks: { label: string; passed: boolean }[]
+}
+
+export function validatePassword(password: string): PasswordStrength {
+  const checks = [
+    { label: 'Al menos 8 caracteres', passed: password.length >= 8 },
+    { label: 'Una letra mayúscula', passed: /[A-Z]/.test(password) },
+    { label: 'Una letra minúscula', passed: /[a-z]/.test(password) },
+    { label: 'Un número', passed: /[0-9]/.test(password) },
+  ]
+  const passed = checks.filter((c) => c.passed).length
+  const labels = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte']
+  return {
+    valid: passed === checks.length,
+    score: passed,
+    label: labels[passed],
+    checks,
+  }
+}
+
 export function timeAgo(date: string): string {
   const now = new Date()
   const then = new Date(date)
