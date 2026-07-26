@@ -235,7 +235,13 @@ export default function ProfilePage() {
                       <span className="material-symbols-outlined">workspace_premium</span>
                     </div>
                     <div>
-                      <p className="font-label-bold text-label-bold text-on-surface">Publicador Confiable</p>
+                      <p className="font-label-bold text-label-bold text-on-surface">
+                        Publicador Confiable
+                        <span className="ml-2 inline-flex items-center gap-0.5 text-xs font-normal text-text-secondary">
+                          <span className="material-symbols-outlined text-[12px] material-symbols-filled text-yellow-500">star</span>
+                          {profile?.rating?.toFixed(1)}
+                        </span>
+                      </p>
                       <p className="font-small-subtext text-small-subtext text-text-secondary">
                         Destacado por la comunidad
                       </p>

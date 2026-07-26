@@ -389,7 +389,13 @@ export default function ProductDetailPage() {
                         <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
                       </div>
                       <div>
-                        <p className="font-label-bold text-label-bold text-on-surface text-sm">Publicador Confiable</p>
+                        <p className="font-label-bold text-label-bold text-on-surface text-sm">
+                          Publicador Confiable
+                          <span className="ml-2 inline-flex items-center gap-0.5 text-xs font-normal text-text-secondary">
+                            <span className="material-symbols-outlined text-[12px] material-symbols-filled text-yellow-500">star</span>
+                            {seller.rating?.toFixed(1)}
+                          </span>
+                        </p>
                         <p className="text-text-secondary text-xs">Destacado por la comunidad</p>
                       </div>
                     </div>
