@@ -35,6 +35,7 @@ const ProductDetailPage = lazy(() => import('../features/listings/pages/ProductD
 const FeaturedPage = lazy(() => import('../features/listings/pages/FeaturedPage'))
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'))
+const ConfirmEmailPage = lazy(() => import('../features/auth/pages/ConfirmEmailPage'))
 const AuthCallbackPage = lazy(() => import('../features/auth/pages/AuthCallbackPage'))
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'))
 const AccountSettingsPage = lazy(() => import('../features/profile/pages/AccountSettingsPage'))
@@ -89,6 +90,9 @@ export default function AppProviders() {
 
               {/* ── OAuth callback (no guard — Supabase handles the flow) ── */}
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+              {/* ── Magic Link callback (no guard — Supabase redirects here) ── */}
+              <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
 
               {/* ── Protected pages (redirect to /login if not authenticated) */}
               <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

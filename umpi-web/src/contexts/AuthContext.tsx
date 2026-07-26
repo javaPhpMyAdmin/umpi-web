@@ -29,6 +29,8 @@ interface AuthContextValue {
   login: (params: { email: string; password: string }) => Promise<void>
   /** Email + password registration */
   register: (params: { email: string; password: string; fullName: string }) => Promise<void>
+  /** Magic link — sends OTP email for passwordless login/registration */
+  sendMagicLink: (params: { email: string; fullName?: string }) => Promise<void>
   /** Google OAuth login */
   loginWithGoogle: () => Promise<void>
   /** Sign out and clear all cached data */
@@ -38,6 +40,7 @@ interface AuthContextValue {
   isRegistering: boolean
   isLoggingInWithGoogle: boolean
   isLoggingOut: boolean
+  isSendingMagicLink: boolean
   /** Mutation errors */
   loginError: Error | null
   registerError: Error | null
@@ -192,6 +195,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
   })
 
+  // ── Magic Link mutation ──────────────────────────────────────────────────
+  // Sends a one-time password link via email. Works for both new and existing users.
+  // Stores pending profile name in localStorage for profile creation after auth.
+  const sendMagicLinkMutation = useMutation({
+    mutationFn: async ({ email, fullName }: { email: string; fullName?: string }) => {
+      // Store name so ConfirmEmailPage can create the profile after auth
+      if (fullName) localStorage.setItem('pending_profile_name', fullName)
+
+      // Try signInWithOtp first (works for existing users)
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/confirmar-email`,
+        },
+      })
+
+      if (error) {
+        // If user doesn't exist, create account first then send OTP
+        if (error.message.includes('not found') || error.message.includes('invalid')) {
+          const tempPassword = crypto.randomUUID()
+          const { error: signUpError } = await supabase.auth.signUp({
+            email,
+            password: tempPassword,
+            options: {
+              data: { full_name: fullName },
+            },
+          })
+          if (signUpError && !signUpError.message.includes('already registered')) {
+            throw signUpError
+          }
+
+          // Now send the OTP
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/confirmar-email`,
+            },
+          })
+          if (otpError) throw otpError
+          return
+        }
+        throw error
+      }
+    },
+  })
+
   // ── Logout mutation ────────────────────────────────────────────────────────
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -212,12 +261,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     login: async (params) => { await loginMutation.mutateAsync(params) },
     register: async (params) => { await registerMutation.mutateAsync(params) },
+    sendMagicLink: async (params) => { await sendMagicLinkMutation.mutateAsync(params) },
     loginWithGoogle: async () => { await googleMutation.mutateAsync() },
     logout: async () => { await logoutMutation.mutateAsync() },
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     isLoggingInWithGoogle: googleMutation.isPending,
     isLoggingOut: logoutMutation.isPending,
+    isSendingMagicLink: sendMagicLinkMutation.isPending,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
   }
