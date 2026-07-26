@@ -4,6 +4,7 @@ import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import { useAuth } from '../../../contexts/AuthContext'
 import { validatePassword } from '../../../lib/utils'
+import { isDisposableEmail } from '../../../lib/blockedEmails'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
@@ -12,6 +13,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState('')
+  // Honeypot — bots auto-fill this, humans never see it
+  const [website, setWebsite] = useState('')
   const navigate = useNavigate()
   const { register, loginWithGoogle, isRegistering, isLoggingInWithGoogle, registerError } = useAuth()
 
@@ -20,6 +23,14 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Honeypot: bots auto-fill hidden fields, humans never touch them
+    if (website) return
+
+    if (isDisposableEmail(email)) {
+      setError('No se permiten emails temporales. Usá tu correo real.')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden')
@@ -181,6 +192,30 @@ export default function RegisterPage() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Honeypot — invisible to humans, bots auto-fill it */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: '-9999px',
+                height: 0,
+                width: 0,
+                overflow: 'hidden',
+                pointerEvents: 'none',
+              }}
+            >
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
             </div>
 
             {/* Terms */}
