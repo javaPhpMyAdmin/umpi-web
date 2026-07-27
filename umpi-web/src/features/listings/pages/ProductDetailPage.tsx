@@ -64,7 +64,10 @@ export default function ProductDetailPage() {
   // ── Record view (fire-and-forget) ────────────────────────────────────────
   useEffect(() => {
     if (!listing?.id) return
-    void supabase.rpc('record_listing_view', { p_listing_id: listing.id })
+    supabase.rpc('record_listing_view', { p_listing_id: listing.id })
+      .then(({ error }) => {
+        if (error) console.error('View tracking error:', error)
+      })
   }, [listing?.id])
 
   // ── Contact: find or create conversation ──────────────────────────────────
