@@ -125,6 +125,13 @@ export default function ProfilePage() {
             <h1 className="font-header-md text-header-md text-on-surface mb-1">
               {profile?.full_name || 'Usuario'}
             </h1>
+            {/* Premium Trial Badge */}
+            {profile?.subscription_status === 'trial' && profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date() && (
+              <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-[12px] font-label-bold px-2.5 py-1 rounded-full mb-2">
+                <span className="material-symbols-outlined text-[14px]">science</span>
+                Premium Trial
+              </div>
+            )}
             <p className="font-body-base text-body-base text-text-secondary flex items-center gap-1 mb-4">
               <span className="material-symbols-outlined text-[18px] text-red-500">location_on</span>
               {profile?.location || 'Sin ubicación'}

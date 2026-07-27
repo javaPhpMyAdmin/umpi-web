@@ -162,6 +162,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             id: data.user.id,
             full_name: fullName,
             avatar_url: avatarUrl,
+            subscription_status: 'trial',
+            trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           })
 
         // Ignore duplicate key error (trigger already created the profile)

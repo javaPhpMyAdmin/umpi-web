@@ -54,6 +54,18 @@ export default function PlansPage() {
     // Trust subscription_type; only reject if expires_at exists and has passed
     (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
 
+  // Trial logic
+  const isInTrial =
+    profile?.subscription_status === 'trial' &&
+    profile?.trial_ends_at &&
+    new Date(profile.trial_ends_at) > new Date()
+
+  const trialDaysLeft = isInTrial
+    ? Math.max(0, Math.ceil(
+        (new Date(profile!.trial_ends_at!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      ))
+    : 0
+
   const createSubscription = useMutation({
     mutationFn: async (planId: string) => {
       const { data, error } = await supabase.functions.invoke('create-subscription', {
@@ -117,6 +129,27 @@ export default function PlansPage() {
 
         {/* Pricing Cards */}
         <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mb-[80px] mt-xl">
+          {/* Trial Banner */}
+          {isInTrial && (
+            <div className="bg-green-50 border border-green-200 rounded-[14px] p-lg mb-xl max-w-2xl mx-auto">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="material-symbols-outlined text-green-600">celebration</span>
+                <h3 className="font-label-bold text-label-bold text-green-800">
+                  Estás en periodo de prueba
+                </h3>
+              </div>
+              <p className="text-green-700 text-sm mb-3">
+                Te quedan <strong>{trialDaysLeft}</strong> {trialDaysLeft === 1 ? 'día' : 'días'} de premium gratis
+              </p>
+              <div className="w-full bg-green-200 rounded-full h-2">
+                <div
+                  className="bg-green-600 h-2 rounded-full transition-all"
+                  style={{ width: `${((30 - trialDaysLeft) / 30) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {plans && plans.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-xl md:gap-gutter max-w-4xl mx-auto">
               {[...plans].reverse().map((plan) => {
@@ -149,10 +182,15 @@ export default function PlansPage() {
                       </p>
                     </div>
                     <div className="mb-xxl">
-                      <span className="font-display-lg text-display-lg text-text-deep">
-                        {formatPrice(plan.price)}
+                      {isInTrial && (
+                        <span className="font-body-base text-body-base text-text-muted line-through mr-2">
+                          {formatPrice(plan.price)}
+                        </span>
+                      )}
+                      <span className={`font-display-lg text-display-lg ${isInTrial ? 'text-green-600' : 'text-text-deep'}`}>
+                        {isInTrial ? 'Gratis' : formatPrice(plan.price)}
                       </span>
-                      <span className="font-body-base text-body-base text-text-secondary">/mes</span>
+                      {!isInTrial && <span className="font-body-base text-body-base text-text-secondary">/mes</span>}
                     </div>
                     <ul className="flex flex-col gap-md mb-xxl flex-grow">
                       {plan.features.map((feature, i) => (
@@ -179,6 +217,14 @@ export default function PlansPage() {
                       >
                         Iniciar sesión
                       </Link>
+                    ) : isInTrial && isPremium ? (
+                      <button
+                        disabled
+                        className="w-full font-label-bold text-label-bold rounded-[14px] h-[56px] bg-green-100 text-green-700 cursor-not-allowed mt-auto flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                        Ya lo tenés gratis
+                      </button>
                     ) : hasActivePlan ? (
                       <button
                         disabled

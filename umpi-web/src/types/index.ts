@@ -49,6 +49,8 @@ export interface Profile {
   total_listings: number
   subscription_type: string
   subscription_expires_at: string | null
+  subscription_status: string | null
+  trial_ends_at: string | null
   location: string | null
   is_admin: boolean
   created_at: string

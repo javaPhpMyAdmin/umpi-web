@@ -48,6 +48,8 @@ export default function ConfirmEmailPage() {
             .insert({
               id: session.user!.id,
               full_name: fullName,
+              subscription_status: 'trial',
+              trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             })
 
           if (insertError && insertError.code !== '23505') {
