@@ -9,7 +9,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../lib/supabase'
 import { uploadImage, deleteImage } from '../../../lib/upload'
 import Navbar from '../../../components/layout/Navbar'

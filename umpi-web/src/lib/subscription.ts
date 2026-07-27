@@ -91,6 +91,7 @@ export function getEffectivePlan(profile: Profile | null | undefined): PlanSlug 
  */
 export function getMaxImages(profile: Profile | null | undefined): number {
   const plan = getEffectivePlan(profile)
+  if (plan === 'none') return DEFAULT_LIMITS.maxImages
   return PLAN_LIMITS[plan]?.maxImages ?? DEFAULT_LIMITS.maxImages
 }
 
@@ -100,6 +101,7 @@ export function getMaxImages(profile: Profile | null | undefined): number {
  */
 export function getMaxFeatured(profile: Profile | null | undefined): number {
   const plan = getEffectivePlan(profile)
+  if (plan === 'none') return DEFAULT_LIMITS.maxFeatured
   return PLAN_LIMITS[plan]?.maxFeatured ?? DEFAULT_LIMITS.maxFeatured
 }
 
