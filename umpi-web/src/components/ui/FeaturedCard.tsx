@@ -35,7 +35,7 @@ export default function FeaturedCard({ listing }: FeaturedCardProps) {
           {listing.title}
         </h3>
         <div className="flex items-center text-text-muted font-small-subtext text-small-subtext mt-1">
-          <span className="material-symbols-outlined text-[14px] mr-1">location_on</span>
+          <span className="material-symbols-outlined text-[14px] mr-1 text-red-500">location_on</span>
           {listing.location || 'Sin ubicación'}
         </div>
       </div>

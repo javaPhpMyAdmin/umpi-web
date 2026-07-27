@@ -126,7 +126,7 @@ export default function ProfilePage() {
               {profile?.full_name || 'Usuario'}
             </h1>
             <p className="font-body-base text-body-base text-text-secondary flex items-center gap-1 mb-4">
-              <span className="material-symbols-outlined text-[18px]">location_on</span>
+              <span className="material-symbols-outlined text-[18px] text-red-500">location_on</span>
               {profile?.location || 'Sin ubicación'}
             </p>
             <div className="w-full bg-surface-container-low rounded-lg p-3 mb-6">

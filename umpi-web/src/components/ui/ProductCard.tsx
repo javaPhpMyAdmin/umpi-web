@@ -44,7 +44,7 @@ export default function ProductCard({ listing }: ProductCardProps) {
           {listing.title}
         </h3>
         <div className="flex items-center text-text-muted font-small-subtext text-small-subtext">
-          <span className="material-symbols-outlined text-[12px] mr-1">location_on</span>
+          <span className="material-symbols-outlined text-[12px] mr-1 text-red-500">location_on</span>
           <span className="truncate">{listing.location || 'Sin ubicación'}</span>
         </div>
       </div>

@@ -378,7 +378,7 @@ export default function ProductDetailPage() {
                   {/* Location inside seller card */}
                   {(listing.location || seller.location) && (
                     <div className="flex items-center gap-2 text-text-secondary font-body-base text-body-base pt-2 border-t border-border-light">
-                      <span className="material-symbols-outlined text-[18px]">location_on</span>
+                      <span className="material-symbols-outlined text-[18px] text-red-500">location_on</span>
                       <p>{listing.location || seller.location}</p>
                     </div>
                   )}
