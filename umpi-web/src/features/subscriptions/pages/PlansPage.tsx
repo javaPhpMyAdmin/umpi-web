@@ -7,6 +7,7 @@ import type { SubscriptionPlan } from '../../../types'
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import { formatPrice } from '../../../lib/utils'
+import { hasActiveBenefits, isInTrial as isInTrialCheck, getTrialDaysLeft } from '../../../lib/subscription'
 
 function useSubscriptionPlans() {
   return useQuery({
@@ -47,24 +48,12 @@ export default function PlansPage() {
     }
   }, [searchParams, session, queryClient])
 
-  const hasActivePlan =
-    profile?.subscription_type &&
-    profile.subscription_type !== '' &&
-    profile.subscription_type !== 'none' &&
-    // Trust subscription_type; only reject if expires_at exists and has passed
-    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
+  const hasActivePlan = hasActiveBenefits(profile)
 
   // Trial logic
-  const isInTrial =
-    profile?.subscription_status === 'trial' &&
-    profile?.trial_ends_at &&
-    new Date(profile.trial_ends_at) > new Date()
+  const isInTrial = isInTrialCheck(profile)
 
-  const trialDaysLeft = isInTrial
-    ? Math.max(0, Math.ceil(
-        (new Date(profile!.trial_ends_at!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      ))
-    : 0
+  const trialDaysLeft = getTrialDaysLeft(profile) ?? 0
 
   const createSubscription = useMutation({
     mutationFn: async (planId: string) => {

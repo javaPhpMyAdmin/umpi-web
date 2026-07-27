@@ -30,6 +30,7 @@ import { useCities } from '../../../hooks/useCities'
 import { useFeaturedRemaining } from '../../../hooks/useFeaturedRemaining'
 import Select from '../../../components/ui/Select'
 import CharacterCounter from '../../../components/ui/CharacterCounter'
+import { hasActiveBenefits, getMaxImages } from '../../../lib/subscription'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -46,12 +47,7 @@ export default function PublishPage() {
   const { data: cities } = useCities()
 
   // ── Subscription & featured ──────────────────────────────────────────────
-  const hasActivePlan =
-    profile?.subscription_type != null &&
-    profile.subscription_type !== '' &&
-    profile.subscription_type !== 'none' &&
-    // Trust subscription_type; only reject if expires_at exists and has passed
-    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
+  const hasActivePlan = hasActiveBenefits(profile)
 
   const { data: featured, isLoading: featuredLoading, error: featuredError } =
     useFeaturedRemaining(hasActivePlan ? profile?.subscription_type : undefined)
@@ -75,7 +71,7 @@ export default function PublishPage() {
   const uploadingRef = useRef(false)
 
   // Max images based on subscription plan (default 3 for free users)
-  const maxImages = profile?.subscription_type === 'premium' ? 10 : profile?.subscription_type === 'standard' ? 10 : 3
+  const maxImages = getMaxImages(profile)
   const atImageLimit = imageFiles.length >= maxImages
 
   // Revoke object URLs on unmount

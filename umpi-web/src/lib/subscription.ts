@@ -1,0 +1,114 @@
+import type { Profile } from '../types'
+
+// ─── Plan limits (matching subscription_plans table) ────────────────────────
+const PLAN_LIMITS = {
+  premium: { maxImages: 20, maxFeatured: 10 },
+  estandar: { maxImages: 10, maxFeatured: 1 },
+} as const
+
+const DEFAULT_LIMITS = { maxImages: 3, maxFeatured: 0 }
+
+// ─── Core checks ───────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the user has active benefits (trial OR paid plan).
+ * This is the single source of truth for "can this user do premium stuff?"
+ */
+export function hasActiveBenefits(profile: Profile | null | undefined): boolean {
+  if (!profile) return false
+
+  // Trial active
+  if (
+    profile.subscription_status === 'trial' &&
+    profile.trial_ends_at &&
+    new Date(profile.trial_ends_at) > new Date()
+  ) return true
+
+  // Paid plan active
+  if (
+    profile.subscription_type &&
+    profile.subscription_type !== '' &&
+    profile.subscription_type !== 'none' &&
+    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
+  ) return true
+
+  return false
+}
+
+/**
+ * Returns true if the user has a paid subscription (not trial).
+ * Use this when you need to distinguish trial from paid.
+ */
+export function hasPaidPlan(profile: Profile | null | undefined): boolean {
+  if (!profile) return false
+  return (
+    profile.subscription_type != null &&
+    profile.subscription_type !== '' &&
+    profile.subscription_type !== 'none' &&
+    (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
+  )
+}
+
+/**
+ * Returns true if the user is currently in trial period.
+ */
+export function isInTrial(profile: Profile | null | undefined): boolean {
+  if (!profile) return false
+  return (
+    profile.subscription_status === 'trial' &&
+    profile.trial_ends_at != null &&
+    new Date(profile.trial_ends_at) > new Date()
+  )
+}
+
+// ─── Effective plan resolution ──────────────────────────────────────────────
+
+type PlanSlug = 'premium' | 'estandar' | 'none'
+
+/**
+ * Returns the effective plan slug for feature calculations.
+ * Trial is treated as premium. Falls back to the user's actual paid plan.
+ */
+export function getEffectivePlan(profile: Profile | null | undefined): PlanSlug {
+  if (!profile) return 'none'
+
+  // Trial → behaves as premium
+  if (isInTrial(profile)) return 'premium'
+
+  // Paid plan
+  if (hasPaidPlan(profile)) {
+    return (profile.subscription_type as PlanSlug) || 'none'
+  }
+
+  return 'none'
+}
+
+// ─── Limit getters ──────────────────────────────────────────────────────────
+
+/**
+ * Max images per listing based on effective plan.
+ * Trial = premium = 20, estándar = 10, free = 3.
+ */
+export function getMaxImages(profile: Profile | null | undefined): number {
+  const plan = getEffectivePlan(profile)
+  return PLAN_LIMITS[plan]?.maxImages ?? DEFAULT_LIMITS.maxImages
+}
+
+/**
+ * Max featured listings per billing period.
+ * Trial = premium = 10, estándar = 1, free = 0.
+ */
+export function getMaxFeatured(profile: Profile | null | undefined): number {
+  const plan = getEffectivePlan(profile)
+  return PLAN_LIMITS[plan]?.maxFeatured ?? DEFAULT_LIMITS.maxFeatured
+}
+
+/**
+ * Days remaining in trial, or null if not in trial.
+ */
+export function getTrialDaysLeft(profile: Profile | null | undefined): number | null {
+  if (!isInTrial(profile) || !profile?.trial_ends_at) return null
+  return Math.max(0, Math.ceil(
+    (new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  ))
+}

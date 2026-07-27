@@ -20,21 +20,10 @@ import { useCities } from '../../../hooks/useCities'
 import Select from '../../../components/ui/Select'
 import CharacterCounter from '../../../components/ui/CharacterCounter'
 import ProfilePageSkeleton from '../../../components/ui/skeletons/ProfilePageSkeleton'
+import { getMaxImages } from '../../../lib/subscription'
 
 const TITLE_MAX = 100
 const DESCRIPTION_MAX = 500
-
-// Default limits when plan data isn't available yet
-const DEFAULT_LIMITS: Record<string, number> = {
-  premium: 20,
-  estandar: 10,
-}
-
-function getMaxImages(subscriptionType: string | null | undefined, planMaxImages: number | null): number {
-  if (planMaxImages != null && planMaxImages > 0) return planMaxImages
-  if (!subscriptionType) return 3
-  return DEFAULT_LIMITS[subscriptionType] ?? 3
-}
 
 export default function EditPage() {
   const { id } = useParams<{ id: string }>()
@@ -75,21 +64,7 @@ export default function EditPage() {
       previewsRef.current.forEach(URL.revokeObjectURL)
     }
   }, [])
-  const { data: userPlan } = useQuery({
-    queryKey: ['subscription-plan', profile?.subscription_type],
-    queryFn: async () => {
-      if (!profile?.subscription_type) return null
-      const { data } = await supabase
-        .from('subscription_plans')
-        .select('max_images')
-        .eq('slug', profile.subscription_type)
-        .single()
-      return data
-    },
-    enabled: !!profile?.subscription_type,
-  })
-
-  const maxImages = getMaxImages(profile?.subscription_type, userPlan?.max_images)
+  const maxImages = getMaxImages(profile)
   const totalImages = existingImages.length + newImages.length
   const canAddMore = totalImages < maxImages
 

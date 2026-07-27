@@ -11,6 +11,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { useUserListings, flattenUserListings, PAGE_SIZE } from '../../../hooks/useUserListings'
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
 import { formatPrice } from '../../../lib/utils'
+import { hasActiveBenefits, isInTrial, getEffectivePlan } from '../../../lib/subscription'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -65,17 +66,15 @@ export default function ProfilePage() {
   })
 
   const subscriptionInfo = (() => {
-    const type = profile?.subscription_type
-    if (!type || type === 'none' || type === '') return null
-    // If expires_at exists, check it hasn't passed; otherwise trust subscription_type
-    if (profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date()) return null
-    switch (type) {
+    if (!hasActiveBenefits(profile)) return null
+    const plan = getEffectivePlan(profile)
+    switch (plan) {
       case 'premium':
         return { label: 'Premium', price: '$30.000/mes', icon: 'star', color: 'bg-primary-container text-white' }
       case 'estandar':
         return { label: 'Estándar', price: '$5.900/mes', icon: 'card_membership', color: 'bg-secondary-container text-on-secondary-container' }
       default:
-        return { label: type.charAt(0).toUpperCase() + type.slice(1), price: null, icon: 'card_membership', color: 'bg-secondary-container text-on-secondary-container' }
+        return null
     }
   })()
 
@@ -126,7 +125,7 @@ export default function ProfilePage() {
               {profile?.full_name || 'Usuario'}
             </h1>
             {/* Premium Trial Badge */}
-            {profile?.subscription_status === 'trial' && profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date() && (
+            {isInTrial(profile) && (
               <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-[12px] font-label-bold px-2.5 py-1 rounded-full mb-2">
                 <span className="material-symbols-outlined text-[14px]">science</span>
                 Premium Trial
