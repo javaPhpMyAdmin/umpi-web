@@ -30,7 +30,7 @@ import { useCities } from '../../../hooks/useCities'
 import { useFeaturedRemaining } from '../../../hooks/useFeaturedRemaining'
 import Select from '../../../components/ui/Select'
 import CharacterCounter from '../../../components/ui/CharacterCounter'
-import { hasActiveBenefits, getMaxImages } from '../../../lib/subscription'
+import { hasActiveBenefits, getMaxImages, getEffectivePlan } from '../../../lib/subscription'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ export default function PublishPage() {
   const hasActivePlan = hasActiveBenefits(profile)
 
   const { data: featured, isLoading: featuredLoading, error: featuredError } =
-    useFeaturedRemaining(hasActivePlan ? profile?.subscription_type : undefined)
+    useFeaturedRemaining(hasActivePlan ? getEffectivePlan(profile) : undefined)
 
   const [featureToggle, setFeatureToggle] = useState(false)
 
