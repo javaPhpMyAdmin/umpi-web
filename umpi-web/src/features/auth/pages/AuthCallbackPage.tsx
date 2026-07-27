@@ -1,13 +1,51 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+
+/**
+ * AuthCallbackPage — handles Google OAuth + Magic Link callbacks.
+ * After session is established, ensures a profile exists in `profiles`
+ * (important for Google users who don't go through registerMutation).
+ */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
 
-  // 🚀 CANDADO MÁGICO: Evita que React ejecute la función dos veces seguidas
+  // CANDADO: Evita que React ejecute la función dos veces seguidas
   const isProcessing = useRef(false);
+
+  // Ensures profile exists after OAuth login (Google users need this)
+  const ensureProfile = async (userId: string) => {
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!existing) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fullName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split('@')[0] ||
+        'Usuario';
+      const avatarUrl = user.user_metadata?.avatar_url || null;
+
+      await supabase.from('profiles').upsert({
+        id: userId,
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        // Fallback: set trial directly in case the DB trigger isn't created yet
+        subscription_status: 'trial',
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+  };
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -27,12 +65,15 @@ export default function AuthCallbackPage() {
         // PKCE flow: exchange code for session
         const code = searchParams.get('code');
         if (code) {
-          isProcessing.current = true; // Cerramos el candado inmediatamente
+          isProcessing.current = true;
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             setError(error.message);
             return;
           }
+          // Ensure profile exists (handles Google OAuth new users)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) await ensureProfile(session.user.id);
           navigate('/');
           return;
         }
@@ -45,7 +86,7 @@ export default function AuthCallbackPage() {
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
-          isProcessing.current = true; // Cerramos el candado inmediatamente
+          isProcessing.current = true;
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -54,6 +95,9 @@ export default function AuthCallbackPage() {
             setError(error.message);
             return;
           }
+          // Ensure profile exists (handles Google OAuth new users)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) await ensureProfile(session.user.id);
           navigate('/');
           return;
         }
