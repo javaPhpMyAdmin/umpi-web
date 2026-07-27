@@ -253,13 +253,14 @@ export default function PlansPage() {
           </section>
         )}
 
-        {session && !hasActivePlan && (
+        {session && !hasActivePlan && !isInTrial && (
           <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mt-lg text-center">
             <button
               onClick={() => { setSyncResult(null); syncSubscription.mutate() }}
               disabled={syncSubscription.isPending}
-              className="text-sm text-text-secondary underline hover:text-text-deep transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-lg py-3 rounded-[14px] bg-surface-container-low border border-border-light text-sm font-label-bold text-text-secondary hover:bg-surface-container hover:text-text-deep hover:border-border-default transition-all duration-200 disabled:opacity-50"
             >
+              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
               {syncSubscription.isPending ? 'Sincronizando...' : 'Ya pagué, verificar mi suscripción'}
             </button>
             {syncResult && (
