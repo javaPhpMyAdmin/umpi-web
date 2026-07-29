@@ -60,7 +60,7 @@ export default function PlansPage() {
       const { data, error } = await supabase.functions.invoke('create-subscription', {
         body: {
           plan_id: planId,
-          payer_email: 'test_user_906191175949745667@testuser.com',
+          payer_email: session?.user?.email,
           back_url: `${window.location.origin}/planes`,
         },
       })
