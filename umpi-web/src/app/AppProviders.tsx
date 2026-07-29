@@ -23,6 +23,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { lazy, Suspense, useState } from 'react'
 
 import { AuthProvider } from '../contexts/AuthContext'
+import { ThemeProvider } from '../contexts/ThemeContext'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import GuestRoute from '../components/auth/GuestRoute'
 import Navbar from '../components/layout/Navbar'
@@ -37,6 +38,8 @@ const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'))
 const ConfirmEmailPage = lazy(() => import('../features/auth/pages/ConfirmEmailPage'))
 const AuthCallbackPage = lazy(() => import('../features/auth/pages/AuthCallbackPage'))
+const ResetPasswordPage = lazy(() => import('../features/auth/pages/ResetPasswordPage'))
+const UpdatePasswordPage = lazy(() => import('../features/auth/pages/UpdatePasswordPage'))
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'))
 const AccountSettingsPage = lazy(() => import('../features/profile/pages/AccountSettingsPage'))
 const PlansPage = lazy(() => import('../features/subscriptions/pages/PlansPage'))
@@ -74,6 +77,7 @@ export default function AppProviders() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <Suspense fallback={<PageShell />}>
@@ -94,6 +98,10 @@ export default function AppProviders() {
               {/* ── Magic Link callback (no guard — Supabase redirects here) ── */}
               <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
 
+              {/* ── Password reset (no guard — handles its own redirect) ── */}
+              <Route path="/olvide-contrasenia" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
+              <Route path="/actualizar-contrasenia" element={<UpdatePasswordPage />} />
+
               {/* ── Protected pages (redirect to /login if not authenticated) */}
               <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/perfil/configuracion" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
@@ -108,6 +116,7 @@ export default function AppProviders() {
           </Suspense>
         </BrowserRouter>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

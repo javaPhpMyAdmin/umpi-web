@@ -8,11 +8,14 @@
  * - Mobile: hamburger menu opens a slide-in drawer with all nav links
  */
 
-import { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import { useNotificationCount, useRealtimeNotifications } from '../../hooks/useNotifications'
-import Avatar from '../ui/Avatar'
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  useNotificationCount,
+  useRealtimeNotifications,
+} from '../../hooks/useNotifications';
+import Avatar from '../ui/Avatar';
 
 const navLinks = [
   { to: '/', label: 'Inicio', icon: 'home' },
@@ -20,49 +23,56 @@ const navLinks = [
   { to: '/destacados', label: 'Destacados', icon: 'star' },
   { to: '/mensajes', label: 'Mensajes', icon: 'chat', protected: true },
   { to: '/perfil', label: 'Mi Perfil', icon: 'person', protected: true },
-  { to: '/notificaciones', label: 'Notificaciones', icon: 'notifications', protected: true },
-]
+  {
+    to: '/notificaciones',
+    label: 'Notificaciones',
+    icon: 'notifications',
+    protected: true,
+  },
+];
 
 export default function Navbar() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { session, profile, logout, isLoggingOut } = useAuth()
-  const { data: unreadCount } = useNotificationCount(session?.user?.id)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { session, profile, logout, isLoggingOut } = useAuth();
+  const { data: unreadCount } = useNotificationCount(session?.user?.id);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Realtime: badge updates instantly when new notifications arrive
-  useRealtimeNotifications(session?.user?.id || null)
+  useRealtimeNotifications(session?.user?.id || null);
 
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = ''
+      document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = '' }
-  }, [mobileMenuOpen])
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const handleLogout = async () => {
-    setMobileMenuOpen(false)
-    await logout()
-    navigate('/')
-  }
+    setMobileMenuOpen(false);
+    await logout();
+    navigate('/');
+  };
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = searchQuery.trim()
+    e.preventDefault();
+    const trimmed = searchQuery.trim();
     if (trimmed) {
-      navigate(`/explorar?q=${encodeURIComponent(trimmed)}`)
-      setSearchQuery('')
+      navigate(`/explorar?q=${encodeURIComponent(trimmed)}`);
+      setSearchQuery('');
     }
-  }
+  };
 
   return (
     <header className="bg-surface sticky top-0 z-50 shadow-sm">
@@ -70,15 +80,25 @@ export default function Navbar() {
         {/* Brand */}
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[28px]" style={{ color: '#FF6B35' }}>storefront</span>
-            <span className="font-display-lg text-display-lg font-extrabold text-primary-container" style={{ color: '#FF6B35' }}>Umpi</span>
+            <span
+              className="material-symbols-outlined text-[28px]"
+              style={{ color: '#FF6B35' }}
+            >
+              storefront
+            </span>
+            <span
+              className="font-display-lg text-display-lg font-extrabold text-primary-container"
+              style={{ color: '#FF6B35' }}
+            >
+              Umpi
+            </span>
           </Link>
           {/* Navigation Links (Desktop) */}
           <nav className="hidden md:flex gap-6 items-center pt-1 h-full">
             {navLinks.map((link) => {
-              if (link.protected && !session) return null
+              if (link.protected && !session) return null;
 
-              const isActive = location.pathname === link.to
+              const isActive = location.pathname === link.to;
               return (
                 <Link
                   key={link.to}
@@ -91,7 +111,7 @@ export default function Navbar() {
                 >
                   {link.label}
                 </Link>
-              )
+              );
             })}
           </nav>
         </div>
@@ -249,15 +269,17 @@ export default function Navbar() {
               to="/publicar"
               className="flex items-center gap-3 bg-primary-container text-white px-4 py-3 rounded-[12px] font-label-bold text-label-bold hover:bg-primary-dark transition-colors mb-3 active:scale-[0.98]"
             >
-              <span className="material-symbols-outlined text-[20px]">add_circle</span>
+              <span className="material-symbols-outlined text-[20px]">
+                add_circle
+              </span>
               Publicar aviso
             </Link>
           )}
 
           {/* Nav links */}
           {navLinks.map((link) => {
-            if (link.protected && !session) return null
-            const isActive = location.pathname === link.to
+            if (link.protected && !session) return null;
+            const isActive = location.pathname === link.to;
             return (
               <Link
                 key={link.to}
@@ -268,15 +290,21 @@ export default function Navbar() {
                     : 'text-on-surface hover:bg-surface-container-low'
                 }`}
               >
-                <span className="material-symbols-outlined text-[22px]">{link.icon}</span>
-                <span className="font-body-base text-[15px] flex-1">{link.label}</span>
-                {link.to === '/notificaciones' && unreadCount != null && unreadCount > 0 && (
-                  <span className="bg-[#E8752A] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
+                <span className="material-symbols-outlined text-[22px]">
+                  {link.icon}
+                </span>
+                <span className="font-body-base text-[15px] flex-1">
+                  {link.label}
+                </span>
+                {link.to === '/notificaciones' &&
+                  unreadCount != null &&
+                  unreadCount > 0 && (
+                    <span className="bg-[#E8752A] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
               </Link>
-            )
+            );
           })}
 
           {/* Login / Logout */}
@@ -299,13 +327,17 @@ export default function Navbar() {
                 to="/login"
                 className="flex items-center gap-3 px-3 py-3 rounded-[10px] text-primary-container hover:bg-bg-peach-soft transition-colors active:scale-[0.98]"
               >
-                <span className="material-symbols-outlined text-[22px]">login</span>
-                <span className="font-body-base text-[15px]">Iniciar Sesión</span>
+                <span className="material-symbols-outlined text-[22px]">
+                  login
+                </span>
+                <span className="font-body-base text-[15px]">
+                  Iniciar Sesión
+                </span>
               </Link>
             )}
           </div>
         </nav>
       </div>
     </header>
-  )
+  );
 }

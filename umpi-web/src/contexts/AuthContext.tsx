@@ -25,6 +25,10 @@ interface AuthContextValue {
   profile: Profile | null
   /** True while the initial session is being loaded */
   isLoading: boolean
+  /** Send reset password email */
+  resetPassword: (params: { email: string }) => Promise<void>
+  /** Update password after recovery link */
+  updatePassword: (params: { password: string }) => Promise<void>
   /** Email + password login */
   login: (params: { email: string; password: string }) => Promise<void>
   /** Email + password registration */
@@ -41,6 +45,8 @@ interface AuthContextValue {
   isLoggingInWithGoogle: boolean
   isLoggingOut: boolean
   isSendingMagicLink: boolean
+  isResettingPassword: boolean
+  isUpdatingPassword: boolean
   /** Mutation errors */
   loginError: Error | null
   registerError: Error | null
@@ -243,6 +249,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
   })
 
+  // ── Reset password mutation ──────────────────────────────────────────────
+  // Sends a password reset email with a recovery link.
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/actualizar-contrasenia`,
+      })
+      if (error) throw error
+    },
+  })
+
+  // ── Update password mutation ─────────────────────────────────────────────
+  // Called after user clicks the recovery link and sets a new password.
+  const updatePasswordMutation = useMutation({
+    mutationFn: async ({ password }: { password: string }) => {
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth'] })
+    },
+  })
+
   // ── Logout mutation ────────────────────────────────────────────────────────
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -266,11 +295,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     sendMagicLink: async (params) => { await sendMagicLinkMutation.mutateAsync(params) },
     loginWithGoogle: async () => { await googleMutation.mutateAsync() },
     logout: async () => { await logoutMutation.mutateAsync() },
+    resetPassword: async (params) => { await resetPasswordMutation.mutateAsync(params) },
+    updatePassword: async (params) => { await updatePasswordMutation.mutateAsync(params) },
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     isLoggingInWithGoogle: googleMutation.isPending,
     isLoggingOut: logoutMutation.isPending,
     isSendingMagicLink: sendMagicLinkMutation.isPending,
+    isResettingPassword: resetPasswordMutation.isPending,
+    isUpdatingPassword: updatePasswordMutation.isPending,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
   }

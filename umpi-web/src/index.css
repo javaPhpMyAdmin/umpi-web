@@ -2,6 +2,138 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light theme (default) ─────────────────────────────────── */
+:root {
+  --color-primary: #ab3500;
+  --color-primary-container: #ff6b35;
+  --color-primary-dark: #E55A2B;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #5f1900;
+  --color-primary-fixed: #ffdbd0;
+  --color-primary-fixed-dim: #ffb59d;
+  --color-on-primary-fixed: #390c00;
+  --color-on-primary-fixed-variant: #832600;
+  --color-inverse-primary: #ffb59d;
+
+  --color-secondary: #006a60;
+  --color-secondary-container: #8cf5e4;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #007166;
+  --color-secondary-fixed: #8cf5e4;
+  --color-secondary-fixed-dim: #6fd8c8;
+  --color-on-secondary-fixed: #00201c;
+  --color-on-secondary-fixed-variant: #005048;
+
+  --color-tertiary: #765a05;
+  --color-tertiary-container: #b69541;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #3f2f00;
+  --color-tertiary-fixed: #ffdf96;
+  --color-tertiary-fixed-dim: #e7c268;
+  --color-on-tertiary-fixed: #251a00;
+  --color-on-tertiary-fixed-variant: #5a4400;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-error-red: #E63946;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  --color-background: #f8f9fa;
+  --color-surface: #FFFFFF;
+  --color-surface-dim: #d9dadb;
+  --color-surface-bright: #f8f9fa;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container: #edeeef;
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #594139;
+  --color-inverse-surface: #2e3132;
+  --color-inverse-on-surface: #f0f1f2;
+  --color-surface-variant: #e1e3e4;
+  --color-surface-tint: #ab3500;
+  --color-on-background: #191c1d;
+  --color-outline: #8d7168;
+  --color-outline-variant: #e1bfb5;
+
+  --color-border-light: #E5E7EB;
+  --color-text-deep: #1A1A2E;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-bg-peach-soft: #FFECE0;
+  --color-bg-peach-mid: #FFE2D0;
+  --color-gold-premium: #FFD700;
+  --color-star-yellow: #F59E0B;
+}
+
+/* ── Dark theme ────────────────────────────────────────────── */
+.dark {
+  --color-primary: #ffb59d;
+  --color-primary-container: #ff6b35;
+  --color-primary-dark: #E55A2B;
+  --color-on-primary: #390c00;
+  --color-on-primary-container: #ffdbd0;
+  --color-primary-fixed: #832600;
+  --color-primary-fixed-dim: #ab3500;
+  --color-on-primary-fixed: #ffdbd0;
+  --color-on-primary-fixed-variant: #ffb59d;
+  --color-inverse-primary: #ab3500;
+
+  --color-secondary: #6fd8c8;
+  --color-secondary-container: #005048;
+  --color-on-secondary: #00201c;
+  --color-on-secondary-container: #8cf5e4;
+  --color-secondary-fixed: #005048;
+  --color-secondary-fixed-dim: #007166;
+  --color-on-secondary-fixed: #8cf5e4;
+  --color-on-secondary-fixed-variant: #6fd8c8;
+
+  --color-tertiary: #e7c268;
+  --color-tertiary-container: #5a4400;
+  --color-on-tertiary: #251a00;
+  --color-on-tertiary-container: #ffdf96;
+  --color-tertiary-fixed: #5a4400;
+  --color-tertiary-fixed-dim: #765a05;
+  --color-on-tertiary-fixed: #ffdf96;
+  --color-on-tertiary-fixed-variant: #e7c268;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-error-red: #ff6b6b;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  --color-background: #111315;
+  --color-surface: #1a1c1d;
+  --color-surface-dim: #111315;
+  --color-surface-bright: #37393a;
+  --color-surface-container-lowest: #141617;
+  --color-surface-container-low: #1e2022;
+  --color-surface-container: #222426;
+  --color-surface-container-high: #2d2f30;
+  --color-surface-container-highest: #383a3b;
+  --color-on-surface: #e1e3e4;
+  --color-on-surface-variant: #d5c1b8;
+  --color-inverse-surface: #e1e3e4;
+  --color-inverse-on-surface: #2e3132;
+  --color-surface-variant: #594139;
+  --color-surface-tint: #ff6b35;
+  --color-on-background: #e1e3e4;
+  --color-outline: #9c8b82;
+  --color-outline-variant: #594139;
+
+  --color-border-light: #2d2f30;
+  --color-text-deep: #e1e3e4;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+  --color-bg-peach-soft: #2d1e14;
+  --color-bg-peach-mid: #3d2818;
+  --color-gold-premium: #FFD700;
+  --color-star-yellow: #F59E0B;
+}
+
 @layer base {
   body {
     @apply bg-background text-on-surface font-sans antialiased;
