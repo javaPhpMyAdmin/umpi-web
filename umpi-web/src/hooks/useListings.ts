@@ -207,6 +207,8 @@ export function useFeaturedListings(limit = 6) {
         .eq('status', 'active')
         .eq('is_featured', true)
         .order('listing_priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(limit)
 
       if (error) throw error
