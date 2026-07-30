@@ -1,0 +1,14 @@
+{
+  "name": "umpi-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Umpi promotional video — HyperFrames composition",
+  "scripts": {
+    "preview": "npx hyperframes preview ./composition",
+    "render": "npx hyperframes render ./composition --output renders/umpi-promo.mp4",
+    "render:gif": "npx hyperframes render ./composition --output renders/umpi-promo.gif"
+  },
+  "dependencies": {
+    "hyperframes": "latest"
+  }
+}

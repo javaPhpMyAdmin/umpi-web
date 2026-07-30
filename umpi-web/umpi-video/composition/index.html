@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Umpi — Promo Video</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-high: #1e1e1e;
+      --primary: #FF6B35;
+      --primary-glow: rgba(255, 107, 53, 0.25);
+      --cyan: #00f5d4;
+      --cyan-glow: rgba(0, 245, 212, 0.2);
+      --ink: #ffffff;
+      --ink-muted: #888888;
+      --ink-dim: #555555;
+      --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* ── Scenes ─────────────────────────────────────── */
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene.clip {
+      opacity: 1;
+    }
+
+    /* ── Scene 1: Title ─────────────────────────────── */
+    .scene-title {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .logo-mark {
+      width: 80px;
+      height: 80px;
+      background: var(--primary);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 60px var(--primary-glow);
+    }
+
+    .logo-mark .material-symbols-outlined {
+      font-size: 44px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .title-text {
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    .title-text .char {
+      display: inline-block;
+      opacity: 0;
+    }
+
+    .title-rule {
+      width: 200px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--cyan));
+      border-radius: 2px;
+    }
+
+    .title-sub {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    /* ── Scene 2: Cards ─────────────────────────────── */
+    .scene-cards {
+      flex-direction: column;
+      gap: 40px;
+      perspective: 1000px;
+    }
+
+    .cards-header {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--ink);
+      opacity: 0;
+    }
+
+    .cards-header span {
+      color: var(--primary);
+    }
+
+    .cards-row {
+      display: flex;
+      gap: 24px;
+    }
+
+    .card {
+      width: 280px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      opacity: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Light sweep effect */
+    .cards-sweep {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,0.03) 40%,
+        rgba(255,255,255,0.08) 50%,
+        rgba(255,255,255,0.03) 60%,
+        transparent 100%
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Card inner glow on hover/active */
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    #card-1::after {
+      background: radial-gradient(circle at center, var(--primary-glow) 0%, transparent 70%);
+    }
+
+    #card-2::after {
+      background: radial-gradient(circle at center, var(--cyan-glow) 0%, transparent 70%);
+    }
+
+    #card-3::after {
+      background: radial-gradient(circle at center, var(--primary-glow) 0%, transparent 70%);
+    }
+
+    .card.glow::after {
+      opacity: 1;
+    }
+
+    .card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-icon .material-symbols-outlined {
+      font-size: 28px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .card-icon-orange { background: var(--primary); box-shadow: 0 0 30px var(--primary-glow); }
+    .card-icon-cyan { background: var(--cyan); box-shadow: 0 0 30px var(--cyan-glow); }
+    .card-icon-gradient {
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      box-shadow: 0 0 30px var(--primary-glow);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    .card-desc {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--ink-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .card-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .badge-orange { background: rgba(255,107,53,0.15); color: var(--primary); }
+    .badge-cyan { background: rgba(0,245,212,0.12); color: var(--cyan); }
+
+    /* ── Scene 3: Publish ───────────────────────────── */
+    .scene-publish {
+      flex-direction: row;
+      gap: 48px;
+      padding: 0 120px;
+    }
+
+    .publish-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .publish-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      opacity: 0;
+    }
+
+    .step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--surface-high);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .step-text {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .publish-right {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-mock {
+      width: 240px;
+      height: 420px;
+      background: var(--surface);
+      border-radius: 28px;
+      border: 2px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .phone-header {
+      padding: 12px 16px;
+      background: var(--surface-high);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .phone-header .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ink-dim);
+    }
+
+    .phone-body {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .phone-img-placeholder {
+      width: 100%;
+      height: 100px;
+      background: linear-gradient(135deg, rgba(255,107,53,0.1), rgba(0,245,212,0.08));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-img-placeholder .material-symbols-outlined {
+      font-size: 32px;
+      color: var(--ink-dim);
+    }
+
+    .phone-field {
+      width: 100%;
+      height: 36px;
+      background: var(--surface-high);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .phone-field-filled {
+      background: rgba(255,107,53,0.08);
+      border-color: rgba(255,107,53,0.2);
+      position: relative;
+    }
+
+    .phone-field-filled::after {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 6px;
+    }
+
+    .phone-btn {
+      width: 100%;
+      height: 40px;
+      background: var(--primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .phone-check {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 80px;
+      height: 80px;
+      background: var(--cyan);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px var(--cyan-glow);
+    }
+
+    .phone-check .material-symbols-outlined {
+      font-size: 40px;
+      color: var(--bg);
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .publish-right {
+      position: relative;
+    }
+
+    /* ── Scene 4: Final ─────────────────────────────── */
+    .scene-final {
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .final-logo {
+      width: 100px;
+      height: 100px;
+      background: var(--primary);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 80px var(--primary-glow);
+      opacity: 0;
+    }
+
+    .final-logo .material-symbols-outlined {
+      font-size: 52px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .final-title {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      opacity: 0;
+    }
+
+    .final-title .highlight {
+      color: var(--primary);
+    }
+
+    .final-url {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      opacity: 0;
+    }
+
+    .final-cta {
+      margin-top: 12px;
+      padding: 14px 40px;
+      background: var(--primary);
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 8px 30px var(--primary-glow);
+      opacity: 0;
+    }
+
+    .final-tagline {
+      font-size: 15px;
+      color: var(--ink-muted);
+      font-weight: 400;
+      opacity: 0;
+    }
+
+    /* ── Ambient ────────────────────────────────────── */
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .orb-1 {
+      width: 300px;
+      height: 300px;
+      background: var(--primary);
+      top: -100px;
+      right: -50px;
+    }
+
+    .orb-2 {
+      width: 200px;
+      height: 200px;
+      background: var(--cyan);
+      bottom: -80px;
+      left: -40px;
+    }
+
+    .orb-3 {
+      width: 150px;
+      height: 150px;
+      background: var(--primary);
+      bottom: 50%;
+      left: 60%;
+    }
+
+    /* ── Grid overlay ───────────────────────────────── */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    /* ── Material icons ─────────────────────────────── */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="umpi-promo" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+
+    <!-- Ambient background -->
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- ═══════════ SCENE 1: Title Reveal (0-3s) ═══════════ -->
+    <div class="scene scene-title clip" data-start="0" data-duration="3" data-track-index="0">
+      <div class="logo-mark">
+        <span class="material-symbols-outlined">storefront</span>
+      </div>
+      <div class="title-rule"></div>
+      <div class="title-text">Umpi</div>
+      <div class="title-sub">Tu barrio, tus publicaciones</div>
+    </div>
+
+    <!-- ═══════════ SCENE 2: Feature Cards (3-8s) ═══════════ -->
+    <div class="scene scene-cards clip" data-start="3" data-duration="5" data-track-index="0">
+      <div class="cards-header">Publicá. <span>Destacá.</span> Vendé.</div>
+      <div class="cards-row">
+        <div class="card" id="card-1">
+          <div class="card-icon card-icon-orange">
+            <span class="material-symbols-outlined">star</span>
+          </div>
+          <div class="card-title">Destacados</div>
+          <div class="card-desc">Tu aviso aparece primero en las búsquedas y en la página principal</div>
+          <div class="card-badge badge-orange">Mayor visibilidad</div>
+        </div>
+        <div class="card" id="card-2">
+          <div class="card-icon card-icon-cyan">
+            <span class="material-symbols-outlined">diamond</span>
+          </div>
+          <div class="card-title">Planes flexibles</div>
+          <div class="card-desc">Estandar o Premium. Elegí el que se adapte a tu negocio</div>
+          <div class="card-badge badge-cyan">Desde $5.900/mes</div>
+        </div>
+        <div class="card" id="card-3">
+          <div class="card-icon card-icon-gradient">
+            <span class="material-symbols-outlined">add_circle</span>
+          </div>
+          <div class="card-title">Publicar es fácil</div>
+          <div class="card-desc">Subí fotos, agregá precio y descripción. En minutos tu aviso está live</div>
+          <div class="card-badge badge-orange">Gratis para empezar</div>
+        </div>
+      </div>
+      <!-- Light sweep overlay -->
+      <div class="cards-sweep"></div>
+    </div>
+
+    <!-- ═══════════ SCENE 3: Publish Flow (8-12s) ═══════════ -->
+    <div class="scene scene-publish clip" data-start="8" data-duration="4" data-track-index="0">
+      <div class="publish-left">
+        <div class="publish-step">
+          <div class="step-num">1</div>
+          <div class="step-text">Subí fotos de tu producto</div>
+        </div>
+        <div class="publish-step">
+          <div class="step-num">2</div>
+          <div class="step-text">Poné precio y descripción</div>
+        </div>
+        <div class="publish-step">
+          <div class="step-num">3</div>
+          <div class="step-text">Elegí categoría y ciudad</div>
+        </div>
+        <div class="publish-step">
+          <div class="step-num">4</div>
+          <div class="step-text">¡Publicá y empezá a vender!</div>
+        </div>
+      </div>
+      <div class="publish-right">
+        <div class="phone-mock">
+          <div class="phone-header">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="phone-body">
+            <div class="phone-img-placeholder">
+              <span class="material-symbols-outlined">add_a_photo</span>
+            </div>
+            <div class="phone-field phone-field-filled"></div>
+            <div class="phone-field"></div>
+            <div class="phone-field"></div>
+            <div class="phone-btn">Publicar aviso</div>
+          </div>
+        </div>
+        <div class="phone-check">
+          <span class="material-symbols-outlined">check</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCENE 4: Final (12-15s) ═══════════ -->
+    <div class="scene scene-final clip" data-start="12" data-duration="3" data-track-index="0">
+      <div class="final-logo">
+        <span class="material-symbols-outlined">storefront</span>
+      </div>
+      <div class="final-title"><span class="highlight">Umpi</span></div>
+      <div class="final-url">umpi.com.ar</div>
+      <div class="final-cta">Empezá a publicar gratis</div>
+      <div class="final-tagline">Tu barrio digital. Tu comunidad.</div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════
+       GSAP Timeline — HyperFrames paused timeline
+       ═══════════════════════════════════════════════════════ */
+
+    const tl = gsap.timeline({ paused: true });
+
+    // Set initial states (GSAP owns all transforms)
+    gsap.set('.title-rule', { scaleX: 0 });
+    gsap.set('.title-text .char', { opacity: 0, y: 20 });
+    gsap.set('.cards-header', { y: 20 });
+    gsap.set('.card', { y: 40 });
+    gsap.set('.publish-step', { x: -30 });
+    gsap.set('.phone-mock', { scale: 0.9 });
+    gsap.set('.phone-check', { xPercent: -50, yPercent: -50, scale: 0 });
+    gsap.set('.final-logo', { scale: 0.5 });
+    gsap.set('.final-cta', { y: 20 });
+
+    // ── SCENE 1: Title Reveal (0-3s) ────────────────────────
+
+    // Logo mark fade in
+    tl.from('.logo-mark', {
+      scale: 0.3,
+      opacity: 0,
+      duration: 0.6,
+      ease: 'back.out(1.7)',
+    }, 0.1);
+
+    // Rule expands from center
+    tl.to('.title-rule', {
+      scaleX: 1,
+      duration: 1.2,
+      ease: 'power4.inOut',
+    }, 0.3);
+
+    // Split title text into chars and stagger
+    const titleEl = document.querySelector('.title-text');
+    const titleText = titleEl.textContent;
+    titleEl.innerHTML = '';
+    [...titleText].forEach((char) => {
+      const span = document.createElement('span');
+      span.textContent = char === ' ' ? '\u00A0' : char;
+      span.className = 'char';
+      titleEl.appendChild(span);
+    });
+
+    // Re-set after split
+    gsap.set('.title-text .char', { opacity: 0, y: 20 });
+
+    tl.to('.title-text .char', {
+      opacity: 1,
+      y: 0,
+      duration: 0.4,
+      stagger: 0.06,
+      ease: 'power2.out',
+    }, 0.5);
+
+    // Subtitle fade in
+    tl.to('.title-sub', {
+      opacity: 1,
+      duration: 0.8,
+      ease: 'power2.out',
+    }, 1.2);
+
+    // Title scene fades out + hard kill
+    tl.to('.scene-title', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 2.5);
+    tl.set('.scene-title', { opacity: 0 }, 3.0);
+
+    // ── SCENE 2: Feature Cards (3-8s) ───────────────────────
+
+    // Header - split into chars for typewriter
+    const headerEl = document.querySelector('.cards-header');
+    const headerHTML = headerEl.innerHTML;
+    const headerText = headerEl.textContent;
+    headerEl.innerHTML = '';
+    [...headerText].forEach((char, i) => {
+      const span = document.createElement('span');
+      span.textContent = char === ' ' ? '\u00A0' : char;
+      span.className = 'header-char';
+      // Preserve the <span> styling for "Destacá."
+      if (headerHTML.includes('<span>') && i >= headerText.indexOf('Destacá') && i < headerText.indexOf('Destacá') + 8) {
+        span.style.color = 'var(--primary)';
+      }
+      headerEl.appendChild(span);
+    });
+
+    gsap.set('.header-char', { opacity: 0, y: 10 });
+
+    tl.to('.header-char', {
+      opacity: 1,
+      y: 0,
+      duration: 0.03,
+      stagger: 0.04,
+      ease: 'power2.out',
+    }, 3);
+
+    // Cards - cinematic entrance from below with 3D rotation
+    gsap.set('#card-1', { y: 200, opacity: 0, rotationZ: -8, rotationX: 15, scale: 0.8 });
+    gsap.set('#card-2', { y: 250, opacity: 0, rotationZ: 5, rotationX: 20, scale: 0.7 });
+    gsap.set('#card-3', { y: 220, opacity: 0, rotationZ: -3, rotationX: 12, scale: 0.75 });
+
+    // Card 1 - center card rises first
+    tl.to('#card-1', {
+      opacity: 1,
+      y: 0,
+      rotationZ: 0,
+      rotationX: 0,
+      scale: 1,
+      duration: 0.8,
+      ease: 'back.out(1.4)',
+    }, 3.4);
+
+    // Card 1 impact bounce
+    tl.to('#card-1', {
+      scale: 1.03,
+      duration: 0.12,
+      ease: 'power2.out',
+    }, 4.2);
+    tl.to('#card-1', {
+      scale: 1,
+      duration: 0.2,
+      ease: 'elastic.out(1, 0.5)',
+    }, 4.32);
+
+    // Card 2 - left card
+    tl.to('#card-2', {
+      opacity: 1,
+      y: 0,
+      rotationZ: 0,
+      rotationX: 0,
+      scale: 1,
+      duration: 0.8,
+      ease: 'back.out(1.4)',
+    }, 3.6);
+
+    // Card 2 impact bounce
+    tl.to('#card-2', {
+      scale: 1.03,
+      duration: 0.12,
+      ease: 'power2.out',
+    }, 4.4);
+    tl.to('#card-2', {
+      scale: 1,
+      duration: 0.2,
+      ease: 'elastic.out(1, 0.5)',
+    }, 4.52);
+
+    // Card 3 - right card
+    tl.to('#card-3', {
+      opacity: 1,
+      y: 0,
+      rotationZ: 0,
+      rotationX: 0,
+      scale: 1,
+      duration: 0.8,
+      ease: 'back.out(1.4)',
+    }, 3.8);
+
+    // Card 3 impact bounce
+    tl.to('#card-3', {
+      scale: 1.03,
+      duration: 0.12,
+      ease: 'power2.out',
+    }, 4.6);
+    tl.to('#card-3', {
+      scale: 1,
+      duration: 0.2,
+      ease: 'elastic.out(1, 0.5)',
+    }, 4.72);
+
+    // Glow pulse on each card after landing
+    tl.to('#card-1', {
+      onStart: () => document.getElementById('card-1').classList.add('glow'),
+      duration: 0.01,
+    }, 4.4);
+    tl.to('#card-1', {
+      onComplete: () => document.getElementById('card-1').classList.remove('glow'),
+      duration: 0.6,
+    }, 4.5);
+
+    tl.to('#card-2', {
+      onStart: () => document.getElementById('card-2').classList.add('glow'),
+      duration: 0.01,
+    }, 4.6);
+    tl.to('#card-2', {
+      onComplete: () => document.getElementById('card-2').classList.remove('glow'),
+      duration: 0.6,
+    }, 4.7);
+
+    tl.to('#card-3', {
+      onStart: () => document.getElementById('card-3').classList.add('glow'),
+      duration: 0.01,
+    }, 4.8);
+    tl.to('#card-3', {
+      onComplete: () => document.getElementById('card-3').classList.remove('glow'),
+      duration: 0.6,
+    }, 4.9);
+
+    // Light sweep across all cards
+    tl.to('.cards-sweep', {
+      left: '100%',
+      duration: 1.2,
+      ease: 'power2.inOut',
+    }, 5.0);
+
+    // Cards scene fades out + hard kill
+    tl.to('.scene-cards', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 7.5);
+    tl.set('.scene-cards', { opacity: 0 }, 8.0);
+
+    // ── SCENE 3: Publish Flow (8-12s) ───────────────────────
+
+    // Steps stagger in
+    tl.to('.publish-step', {
+      opacity: 1,
+      x: 0,
+      duration: 0.5,
+      stagger: 0.2,
+      ease: 'power3.out',
+    }, 8);
+
+    // Phone mock
+    tl.to('.phone-mock', {
+      opacity: 1,
+      scale: 1,
+      duration: 0.8,
+      ease: 'back.out(1.2)',
+    }, 8.2);
+
+    // Phone fields fill animation
+    tl.from('.phone-field', {
+      scaleX: 0,
+      transformOrigin: 'left',
+      duration: 0.4,
+      stagger: 0.12,
+      ease: 'power2.out',
+    }, 9);
+
+    // Phone button pulse
+    tl.to('.phone-btn', {
+      scale: 1.05,
+      duration: 0.3,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 1,
+    }, 10);
+
+    // Success check
+    tl.to('.phone-check', {
+      scale: 1,
+      duration: 0.5,
+      ease: 'back.out(2)',
+    }, 10.5);
+
+    // Phone fades out + hard kill
+    tl.to('.scene-publish', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 11.5);
+    tl.set('.scene-publish', { opacity: 0 }, 12.0);
+
+    // ── SCENE 4: Final (12-15s) ─────────────────────────────
+
+    // Logo scales in
+    tl.to('.final-logo', {
+      opacity: 1,
+      scale: 1,
+      duration: 0.6,
+      ease: 'back.out(1.7)',
+    }, 12);
+
+    // Title
+    tl.to('.final-title', {
+      opacity: 1,
+      duration: 0.5,
+      ease: 'power2.out',
+    }, 12.3);
+
+    // URL
+    tl.to('.final-url', {
+      opacity: 1,
+      duration: 0.5,
+      ease: 'power2.out',
+    }, 12.5);
+
+    // CTA button
+    tl.to('.final-cta', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power3.out',
+    }, 12.7);
+
+    // Tagline
+    tl.to('.final-tagline', {
+      opacity: 1,
+      duration: 0.6,
+      ease: 'power2.out',
+    }, 13);
+
+    // Final logo glow pulse
+    tl.to('.final-logo', {
+      boxShadow: '0 0 120px rgba(255,107,53,0.5)',
+      duration: 1.5,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 1,
+    }, 13);
+
+    // ── Register timeline ───────────────────────────────────
+    window.__timelines = window.__timelines || {};
+    window.__timelines['umpi-promo'] = tl;
+  </script>
+</body>
+</html>

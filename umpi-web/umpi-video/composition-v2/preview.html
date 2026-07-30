@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+  <title>Umpi Promo — Preview</title>
+  <style>
+    html, body { margin: 0; background: #111; color: #eee; font: 14px ui-sans-serif; }
+    iframe { border: 0; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <iframe id="f" src="index.html"></iframe>
+  <script>
+    const f = document.getElementById('f');
+    const u = new URL('index.html', location.href);
+    for (const [k, v] of new URL(location.href).searchParams) {
+      u.searchParams.set(k, v);
+    }
+    f.src = u.toString();
+  </script>
+</body>
+</html>

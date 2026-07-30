@@ -7,10 +7,17 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ listing }: ProductCardProps) {
+  // Border styling for featured listings
+  const featuredBorder = listing.is_featured
+    ? listing.listing_priority >= 2
+      ? 'border-2 border-yellow-400/70 shadow-[0_0_12px_rgba(255,215,0,0.15)]'  // Premium: gold
+      : 'border-2 border-gray-400/50'  // Standard: gray
+    : 'border border-surface-variant/50'  // Not featured: default
+
   return (
     <Link
       to={`/producto/${listing.id}`}
-      className="bg-surface rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] overflow-hidden group hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col h-full border border-surface-variant/50"
+      className={`bg-surface rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] overflow-hidden group hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col h-full ${featuredBorder}`}
     >
       <div className="relative h-[140px] md:h-[180px] w-full bg-surface-container-low overflow-hidden">
         <img

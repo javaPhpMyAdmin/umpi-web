@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Umpi — Promo V3</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050508;
+      --primary: #FF6B35;
+      --primary-soft: #ff8c5e;
+      --primary-dark: #cc5529;
+      --primary-glow: rgba(255,107,53,0.35);
+      --primary-glow-strong: rgba(255,107,53,0.6);
+      --cyan: #00f5d4;
+      --cyan-glow: rgba(0,245,212,0.2);
+      --gold: #FFD700;
+      --gold-glow: rgba(255,215,0,0.25);
+      --ink: #ffffff;
+      --ink-soft: rgba(255,255,255,0.7);
+      --ink-muted: rgba(255,255,255,0.35);
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.08);
+      --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* ── Mesh gradient background ──────────────────── */
+    .mesh-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(255,107,53,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 70%, rgba(0,245,212,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(255,215,0,0.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* ── Cinematic letterbox ────────────────────────── */
+    .letterbox {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 6%;
+      background: var(--bg);
+      z-index: 100;
+      pointer-events: none;
+    }
+    .letterbox-top { top: 0; }
+    .letterbox-bottom { bottom: 0; }
+
+    /* ── Particle field ─────────────────────────────── */
+    .particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0;
+    }
+
+    /* ── Ignition point ─────────────────────────────── */
+    .ignition {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      z-index: 10;
+    }
+
+    .ignition-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      z-index: 9;
+    }
+
+    /* ── Starburst lines ────────────────────────────── */
+    .starburst {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      z-index: 8;
+    }
+
+    .burst-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), transparent);
+      transform-origin: left center;
+      opacity: 0;
+    }
+
+    /* ── Scenes ─────────────────────────────────────── */
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene.clip { opacity: 1; }
+
+    /* ═══ SCENE 1: Ignition + Text (0-3s) ════════════ */
+    .scene-ignition {
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .ignition-text {
+      font-size: 90px;
+      font-weight: 900;
+      letter-spacing: -4px;
+      color: var(--ink);
+      opacity: 0;
+      text-shadow: 0 0 60px var(--primary-glow);
+    }
+
+    .ignition-sub {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      opacity: 0;
+    }
+
+    /* ═══ SCENE 2: Floating Cards (3-8s) ═════════════ */
+    .scene-cards {
+      perspective: 1200px;
+      z-index: 20;
+    }
+
+    .cards-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .float-card {
+      position: absolute;
+      width: 240px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      opacity: 0;
+      transform-style: preserve-3d;
+    }
+
+    .float-card-img {
+      width: 100%;
+      height: 120px;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .float-card-img-inner {
+      width: 100%;
+      height: 100%;
+    }
+
+    .fc-img-1 { background: linear-gradient(135deg, #1a2a3a 0%, #2a1a12 100%); }
+    .fc-img-2 { background: linear-gradient(135deg, #122a1a 0%, #1a2a2a 100%); }
+    .fc-img-3 { background: linear-gradient(135deg, #2a1a2a 0%, #1a1a2a 100%); }
+    .fc-img-4 { background: linear-gradient(135deg, #2a2a12 0%, #1a2a1a 100%); }
+    .fc-img-5 { background: linear-gradient(135deg, #1a1a3a 0%, #2a1a1a 100%); }
+
+    .float-card-title {
+      height: 12px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 6px;
+      width: 75%;
+      margin-bottom: 8px;
+    }
+
+    .float-card-price {
+      height: 16px;
+      background: var(--primary);
+      border-radius: 8px;
+      width: 35%;
+      opacity: 0.8;
+    }
+
+    .float-card-glow {
+      position: absolute;
+      inset: -2px;
+      border-radius: 22px;
+      opacity: 0;
+      z-index: -1;
+    }
+
+    .fc-glow-orange { background: var(--primary); filter: blur(20px); }
+    .fc-glow-cyan { background: var(--cyan); filter: blur(20px); }
+
+    /* Phone in center */
+    .center-phone {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+    }
+
+    .phone-v3 {
+      width: 240px;
+      height: 420px;
+      background: #0d0f14;
+      border-radius: 28px;
+      border: 2px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      opacity: 0;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .phone-v3-notch {
+      width: 100px;
+      height: 24px;
+      background: #000;
+      border-radius: 0 0 14px 14px;
+      margin: 0 auto;
+    }
+
+    .phone-v3-screen {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .phone-v3-img {
+      width: 100%;
+      height: 130px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1a2332 0%, #2a1a12 100%);
+      position: relative;
+    }
+
+    .phone-v3-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--primary);
+      color: white;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .phone-v3-title {
+      height: 12px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 6px;
+      width: 80%;
+    }
+
+    .phone-v3-price {
+      height: 18px;
+      background: var(--primary);
+      border-radius: 8px;
+      width: 40%;
+    }
+
+    .phone-v3-meta {
+      display: flex;
+      gap: 6px;
+    }
+
+    .phone-v3-chip {
+      height: 10px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 5px;
+      flex: 1;
+    }
+
+    .phone-v3-stats {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .phone-v3-stat {
+      font-size: 10px;
+      color: var(--ink-muted);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      opacity: 0;
+    }
+
+    .phone-v3-stat .material-symbols-outlined {
+      font-size: 12px;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .stat-cyan .material-symbols-outlined { color: var(--cyan); }
+    .stat-orange .material-symbols-outlined { color: var(--primary); }
+    .stat-gold .material-symbols-outlined { color: var(--gold); }
+
+    /* HUD elements */
+    .hud {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      height: 400px;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .hud-item {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+    }
+
+    .hud-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hud-icon .material-symbols-outlined {
+      font-size: 18px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .hud-icon-orange { background: var(--primary); box-shadow: 0 0 16px var(--primary-glow); }
+    .hud-icon-cyan { background: var(--cyan); box-shadow: 0 0 16px var(--cyan-glow); }
+    .hud-icon-gold { background: var(--gold); box-shadow: 0 0 16px var(--gold-glow); }
+
+    .hud-text {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
+
+    .hud-value {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .hud-value-orange { color: var(--primary); }
+    .hud-value-cyan { color: var(--cyan); }
+    .hud-value-gold { color: var(--gold); }
+
+    .hud-top-left { top: -30px; left: -180px; }
+    .hud-top-right { top: -30px; right: -180px; }
+    .hud-bottom-left { bottom: -30px; left: -180px; }
+    .hud-bottom-right { bottom: -30px; right: -180px; }
+
+    /* ── Shockwave ──────────────────────────────────── */
+    .shockwave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      opacity: 0;
+      z-index: 15;
+    }
+
+    .shockwave-1 { border: 2px solid var(--primary); }
+    .shockwave-2 { border: 1px solid var(--cyan); }
+    .shockwave-3 { border: 1px solid var(--gold); }
+
+    /* ═══ SCENE 3: Final (12-15s) ════════════════════ */
+    .scene-final-v3 {
+      flex-direction: column;
+      gap: 20px;
+      z-index: 30;
+    }
+
+    .f3-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,107,53,0.1);
+      border: 1px solid rgba(255,107,53,0.2);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-soft);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    .f3-badge .material-symbols-outlined {
+      font-size: 16px;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .f3-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      opacity: 0;
+    }
+
+    .f3-logo-box {
+      width: 72px;
+      height: 72px;
+      background: var(--primary);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 50px var(--primary-glow-strong);
+      position: relative;
+    }
+
+    .f3-logo-box::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,107,53,0.3);
+    }
+
+    .f3-logo-box .material-symbols-outlined {
+      font-size: 38px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .f3-brand {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      color: var(--ink);
+    }
+
+    .f3-url {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: 3px;
+      opacity: 0;
+    }
+
+    .f3-cta {
+      margin-top: 8px;
+      padding: 18px 52px;
+      background: var(--primary);
+      border-radius: 18px;
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 16px 50px var(--primary-glow-strong);
+      opacity: 0;
+      transform: translateY(20px);
+      letter-spacing: 0.5px;
+    }
+
+    .f3-footer {
+      font-size: 14px;
+      color: var(--ink-muted);
+      font-weight: 400;
+      opacity: 0;
+      letter-spacing: 2px;
+    }
+
+    /* ── Material icons ─────────────────────────────── */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="umpi-promo-v3" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+
+    <!-- Letterbox -->
+    <div class="letterbox letterbox-top"></div>
+    <div class="letterbox letterbox-bottom"></div>
+
+    <!-- Background -->
+    <div class="mesh-bg" id="mesh-bg"></div>
+
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Ignition elements -->
+    <div class="ignition" id="ignition"></div>
+    <div class="ignition-ring" id="ignition-ring"></div>
+
+    <!-- Starburst -->
+    <div class="starburst" id="starburst"></div>
+
+    <!-- Shockwaves -->
+    <div class="shockwave shockwave-1" id="sw1"></div>
+    <div class="shockwave shockwave-2" id="sw2"></div>
+    <div class="shockwave shockwave-3" id="sw3"></div>
+
+    <!-- ═══════════ SCENE 1: Ignition (0-3s) ═══════════ -->
+    <div class="scene scene-ignition clip" data-start="0" data-duration="3" data-track-index="0">
+      <div class="ignition-text" id="ignition-text">Umpi</div>
+      <div class="ignition-sub" id="ignition-sub">tu mercado vivo</div>
+    </div>
+
+    <!-- ═══════════ SCENE 2: Floating Cards (3-12s) ═══════════ -->
+    <div class="scene scene-cards clip" data-start="3" data-duration="9" data-track-index="0">
+      <div class="cards-container">
+        <!-- Floating background cards -->
+        <div class="float-card" id="fc-1" style="top:10%;left:5%;">
+          <div class="float-card-img"><div class="float-card-img-inner fc-img-1"></div></div>
+          <div class="float-card-title"></div>
+          <div class="float-card-price"></div>
+          <div class="float-card-glow fc-glow-orange"></div>
+        </div>
+        <div class="float-card" id="fc-2" style="top:15%;right:8%;">
+          <div class="float-card-img"><div class="float-card-img-inner fc-img-2"></div></div>
+          <div class="float-card-title"></div>
+          <div class="float-card-price"></div>
+          <div class="float-card-glow fc-glow-cyan"></div>
+        </div>
+        <div class="float-card" id="fc-3" style="bottom:18%;left:8%;">
+          <div class="float-card-img"><div class="float-card-img-inner fc-img-3"></div></div>
+          <div class="float-card-title"></div>
+          <div class="float-card-price"></div>
+          <div class="float-card-glow fc-glow-orange"></div>
+        </div>
+        <div class="float-card" id="fc-4" style="bottom:12%;right:5%;">
+          <div class="float-card-img"><div class="float-card-img-inner fc-img-4"></div></div>
+          <div class="float-card-title"></div>
+          <div class="float-card-price"></div>
+          <div class="float-card-glow fc-glow-cyan"></div>
+        </div>
+        <div class="float-card" id="fc-5" style="top:50%;left:-5%;transform:translateY(-50%);">
+          <div class="float-card-img"><div class="float-card-img-inner fc-img-5"></div></div>
+          <div class="float-card-title"></div>
+          <div class="float-card-price"></div>
+          <div class="float-card-glow fc-glow-orange"></div>
+        </div>
+      </div>
+
+      <!-- Center phone -->
+      <div class="center-phone">
+        <div class="phone-v3" id="phone-v3">
+          <div class="phone-v3-notch"></div>
+          <div class="phone-v3-screen">
+            <div class="phone-v3-img">
+              <div class="phone-v3-badge">DESTACADO</div>
+            </div>
+            <div class="phone-v3-title"></div>
+            <div class="phone-v3-price"></div>
+            <div class="phone-v3-meta">
+              <div class="phone-v3-chip"></div>
+              <div class="phone-v3-chip"></div>
+            </div>
+            <div class="phone-v3-stats">
+              <div class="phone-v3-stat stat-cyan" id="pv3-views">
+                <span class="material-symbols-outlined">visibility</span> 247
+              </div>
+              <div class="phone-v3-stat stat-orange" id="pv3-msgs">
+                <span class="material-symbols-outlined">chat</span> 18
+              </div>
+              <div class="phone-v3-stat stat-gold" id="pv3-stars">
+                <span class="material-symbols-outlined">star</span> 4.9
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HUD -->
+      <div class="hud">
+        <div class="hud-item hud-top-left" id="hud-views">
+          <div class="hud-icon hud-icon-cyan"><span class="material-symbols-outlined">visibility</span></div>
+          <div>
+            <div class="hud-text">Visitas</div>
+            <div class="hud-value hud-value-cyan">247</div>
+          </div>
+        </div>
+        <div class="hud-item hud-top-right" id="hud-msgs">
+          <div class="hud-icon hud-icon-orange"><span class="material-symbols-outlined">chat</span></div>
+          <div>
+            <div class="hud-text">Mensajes</div>
+            <div class="hud-value hud-value-orange">18</div>
+          </div>
+        </div>
+        <div class="hud-item hud-bottom-left" id="hud-featured">
+          <div class="hud-icon hud-icon-gold"><span class="material-symbols-outlined">star</span></div>
+          <div>
+            <div class="hud-text">Plan</div>
+            <div class="hud-value hud-value-gold">Premium</div>
+          </div>
+        </div>
+        <div class="hud-item hud-bottom-right" id="hud-rating">
+          <div class="hud-icon hud-icon-orange"><span class="material-symbols-outlined">thumb_up</span></div>
+          <div>
+            <div class="hud-text">Reputación</div>
+            <div class="hud-value hud-value-orange">4.9</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCENE 3: Final (12-15s) ═══════════ -->
+    <div class="scene scene-final-v3 clip" data-start="12" data-duration="3" data-track-index="0">
+      <div class="f3-badge" id="f3-badge">
+        <span class="material-symbols-outlined">bolt</span>
+        Publicá en 2 minutos
+      </div>
+      <div class="f3-logo-row" id="f3-logo">
+        <div class="f3-logo-box">
+          <span class="material-symbols-outlined">storefront</span>
+        </div>
+        <div class="f3-brand">Umpi</div>
+      </div>
+      <div class="f3-url" id="f3-url">umpi.com.ar</div>
+      <div class="f3-cta" id="f3-cta">Empezá gratis hoy</div>
+      <div class="f3-footer" id="f3-footer">Tu barrio digital · Tu comunidad</div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════
+       GSAP Timeline — Umpi Promo V3
+       ═══════════════════════════════════════════════════════ */
+
+    const tl = gsap.timeline({ paused: true });
+
+    // ── Generate particles ─────────────────────────────────
+    const particlesEl = document.getElementById('particles');
+    for (let i = 0; i < 60; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = 50 + (Math.random() - 0.5) * 20 + '%';
+      p.style.top = 50 + (Math.random() - 0.5) * 20 + '%';
+      const size = 1 + Math.random() * 3;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      const colors = ['var(--primary)', 'var(--cyan)', 'var(--gold)', 'var(--primary-soft)'];
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      particlesEl.appendChild(p);
+    }
+
+    // ── Generate starburst lines ───────────────────────────
+    const starburstEl = document.getElementById('starburst');
+    const LINE_COUNT = 16;
+    for (let i = 0; i < LINE_COUNT; i++) {
+      const line = document.createElement('div');
+      line.className = 'burst-line';
+      line.dataset.angle = (360 / LINE_COUNT) * i;
+      starburstEl.appendChild(line);
+    }
+
+    // ── SCENE 1: Ignition (0-3s) ───────────────────────────
+
+    gsap.set('#ignition', { opacity: 0, scale: 0 });
+    gsap.set('#ignition-ring', { opacity: 0, width: 0, height: 0 });
+    gsap.set('.burst-line', { opacity: 0, width: 0 });
+    gsap.set('#ignition-text', { opacity: 0, scale: 0.5, y: 20 });
+    gsap.set('#ignition-sub', { opacity: 0, y: 15 });
+
+    // Ignition point appears
+    tl.to('#ignition', {
+      opacity: 1,
+      scale: 1,
+      duration: 0.3,
+      ease: 'power2.out',
+    }, 0);
+
+    // Ignition grows
+    tl.to('#ignition', {
+      scale: 8,
+      duration: 0.4,
+      ease: 'power2.in',
+    }, 0.3);
+
+    // Ring expands
+    tl.to('#ignition-ring', {
+      opacity: 0.6,
+      width: 300,
+      height: 300,
+      duration: 0.6,
+      ease: 'power2.out',
+    }, 0.4);
+
+    // Ring fades
+    tl.to('#ignition-ring', {
+      opacity: 0,
+      width: 600,
+      height: 600,
+      duration: 0.8,
+      ease: 'power2.out',
+    }, 0.8);
+
+    // Starburst lines shoot out
+    document.querySelectorAll('.burst-line').forEach((line) => {
+      const angle = parseFloat(line.dataset.angle);
+      const rad = (angle * Math.PI) / 180;
+      const dist = 600;
+      const endX = Math.cos(rad) * dist;
+      const endY = Math.sin(rad) * dist;
+
+      tl.to(line, {
+        opacity: 0.8,
+        width: dist,
+        rotation: angle,
+        duration: 0.5,
+        ease: 'power3.out',
+      }, 0.5);
+
+      tl.to(line, {
+        opacity: 0,
+        duration: 0.4,
+      }, 0.9);
+    });
+
+    // Particles explode outward
+    tl.to('.particle', {
+      opacity: () => 0.3 + Math.random() * 0.5,
+      x: () => (Math.random() - 0.5) * 1200,
+      y: () => (Math.random() - 0.5) * 800,
+      duration: 1.5,
+      ease: 'power2.out',
+      stagger: { each: 0.02, from: 'center' },
+    }, 0.5);
+
+    // Ignition point fades
+    tl.to('#ignition', {
+      opacity: 0,
+      scale: 20,
+      duration: 0.8,
+      ease: 'power2.in',
+    }, 0.8);
+
+    // Mesh background fades in
+    tl.to('#mesh-bg', {
+      opacity: 1,
+      duration: 1,
+      ease: 'power2.out',
+    }, 1);
+
+    // Text appears
+    tl.to('#ignition-text', {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      duration: 0.8,
+      ease: 'back.out(1.5)',
+    }, 1.2);
+
+    tl.to('#ignition-sub', {
+      opacity: 1,
+      y: 0,
+      duration: 0.6,
+      ease: 'power2.out',
+    }, 1.6);
+
+    // Scene 1 out
+    tl.to('.scene-ignition', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 2.5);
+    tl.set('.scene-ignition', { opacity: 0 }, 3.0);
+
+    // ── SCENE 2: Cards + Phone (3-12s) ────────────────────
+
+    // Cards initial positions (from center, scattered)
+    gsap.set('#fc-1', { x: -50, y: 50, scale: 0.4, opacity: 0, rotationZ: -15, rotationY: 25 });
+    gsap.set('#fc-2', { x: 80, y: -30, scale: 0.3, opacity: 0, rotationZ: 10, rotationY: -20 });
+    gsap.set('#fc-3', { x: -70, y: -60, scale: 0.35, opacity: 0, rotationZ: 8, rotationY: 15 });
+    gsap.set('#fc-4', { x: 60, y: 70, scale: 0.3, opacity: 0, rotationZ: -12, rotationY: -25 });
+    gsap.set('#fc-5', { x: -90, y: 0, scale: 0.3, opacity: 0, rotationZ: 5, rotationY: 20 });
+
+    // Cards fly out from center
+    tl.to('#fc-1', { x: 0, y: 0, scale: 1, opacity: 0.7, rotationZ: -3, rotationY: 5, duration: 1, ease: 'back.out(1.2)' }, 3.0);
+    tl.to('#fc-2', { x: 0, y: 0, scale: 1, opacity: 0.7, rotationZ: 2, rotationY: -3, duration: 1, ease: 'back.out(1.2)' }, 3.1);
+    tl.to('#fc-3', { x: 0, y: 0, scale: 1, opacity: 0.7, rotationZ: 3, rotationY: 4, duration: 1, ease: 'back.out(1.2)' }, 3.2);
+    tl.to('#fc-4', { x: 0, y: 0, scale: 1, opacity: 0.7, rotationZ: -2, rotationY: -5, duration: 1, ease: 'back.out(1.2)' }, 3.3);
+    tl.to('#fc-5', { x: 0, y: 0, scale: 1, opacity: 0.7, rotationZ: 4, rotationY: 3, duration: 1, ease: 'back.out(1.2)' }, 3.4);
+
+    // Cards subtle float
+    tl.to('#fc-1', { y: -15, rotationZ: -5, duration: 3, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 4.5);
+    tl.to('#fc-2', { y: 12, rotationZ: 4, duration: 3.5, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 4.6);
+    tl.to('#fc-3', { y: -10, rotationZ: 5, duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 4.7);
+    tl.to('#fc-4', { y: 18, rotationZ: -4, duration: 3.2, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 4.8);
+    tl.to('#fc-5', { y: -12, rotationZ: 6, duration: 3.4, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 4.9);
+
+    // Card glow pulses
+    tl.to('#fc-1 .float-card-glow', { opacity: 0.15, duration: 0.5, yoyo: true, repeat: 1 }, 4.5);
+    tl.to('#fc-2 .float-card-glow', { opacity: 0.15, duration: 0.5, yoyo: true, repeat: 1 }, 5.0);
+    tl.to('#fc-3 .float-card-glow', { opacity: 0.15, duration: 0.5, yoyo: true, repeat: 1 }, 5.5);
+
+    // Phone enters from below
+    gsap.set('#phone-v3', { y: 200, opacity: 0, scale: 0.8 });
+    tl.to('#phone-v3', {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 1,
+      ease: 'back.out(1.3)',
+    }, 5.5);
+
+    // Phone stats
+    tl.to('#pv3-views', { opacity: 1, duration: 0.3 }, 6.3);
+    tl.to('#pv3-msgs', { opacity: 1, duration: 0.3 }, 6.5);
+    tl.to('#pv3-stars', { opacity: 1, duration: 0.3 }, 6.7);
+
+    // HUD elements enter
+    gsap.set('.hud-item', { opacity: 0, scale: 0.8 });
+    tl.to('#hud-views', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }, 6.5);
+    tl.to('#hud-msgs', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }, 6.8);
+    tl.to('#hud-featured', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }, 7.1);
+    tl.to('#hud-rating', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }, 7.4);
+
+    // HUD subtle pulse
+    tl.to('.hud-icon', {
+      boxShadow: '0 0 24px var(--primary-glow)',
+      duration: 1,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 2,
+    }, 7.5);
+
+    // View counter ticks
+    const viewCounter = { val: 0 };
+    tl.to(viewCounter, {
+      val: 247,
+      duration: 3,
+      ease: 'power1.inOut',
+      onUpdate: () => {
+        const v = Math.round(viewCounter.val);
+        const el = document.querySelector('#pv3-views');
+        if (el) el.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' + v;
+      },
+    }, 6.0);
+
+    // Everything fades out for final scene
+    tl.to('.scene-cards', {
+      opacity: 0,
+      duration: 0.6,
+      ease: 'power2.in',
+    }, 11.0);
+    tl.set('.scene-cards', { opacity: 0 }, 11.6);
+
+    // ── Shockwaves ─────────────────────────────────────────
+
+    gsap.set('#sw1', { opacity: 0, width: 0, height: 0 });
+    gsap.set('#sw2', { opacity: 0, width: 0, height: 0 });
+    gsap.set('#sw3', { opacity: 0, width: 0, height: 0 });
+
+    tl.to('#sw1', { opacity: 0.5, width: 800, height: 800, duration: 1, ease: 'power2.out' }, 11.5);
+    tl.to('#sw1', { opacity: 0, width: 1200, height: 1200, duration: 0.8, ease: 'power2.out' }, 12.0);
+    tl.to('#sw2', { opacity: 0.3, width: 600, height: 600, duration: 0.8, ease: 'power2.out' }, 11.7);
+    tl.to('#sw2', { opacity: 0, width: 1000, height: 1000, duration: 0.6, ease: 'power2.out' }, 12.2);
+    tl.to('#sw3', { opacity: 0.2, width: 400, height: 400, duration: 0.6, ease: 'power2.out' }, 11.9);
+    tl.to('#sw3', { opacity: 0, width: 800, height: 800, duration: 0.5, ease: 'power2.out' }, 12.3);
+
+    // ── SCENE 3: Final (12-15s) ────────────────────────────
+
+    gsap.set('#f3-badge', { opacity: 0, y: 10 });
+    gsap.set('#f3-logo', { opacity: 0, scale: 0.6 });
+    gsap.set('#f3-url', { opacity: 0, y: 10 });
+    gsap.set('#f3-cta', { opacity: 0, y: 20, scale: 0.95 });
+    gsap.set('#f3-footer', { opacity: 0, y: 10 });
+
+    tl.to('#f3-badge', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 12.0);
+    tl.to('#f3-logo', { opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.8)' }, 12.2);
+    tl.to('#f3-url', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 12.6);
+    tl.to('#f3-cta', { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.5)' }, 12.9);
+    tl.to('#f3-footer', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 13.2);
+
+    // Logo glow
+    tl.to('.f3-logo-box', {
+      boxShadow: '0 0 80px rgba(255,107,53,0.6)',
+      duration: 1.5,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 1,
+    }, 13.0);
+
+    // ── Register timeline ──────────────────────────────────
+    window.__timelines = window.__timelines || {};
+    window.__timelines['umpi-promo-v3'] = tl;
+  </script>
+</body>
+</html>

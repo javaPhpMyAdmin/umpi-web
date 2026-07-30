@@ -11,57 +11,66 @@
  * - AuthProvider wraps the app and exposes state via React Context
  */
 
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
-import type { Profile } from '../types'
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import type { Profile } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthContextValue {
   /** Current Supabase session (null if not logged in) */
-  session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] | null
+  session:
+    | Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
+    | null;
   /** User profile from the profiles table (null if not loaded or not logged in) */
-  profile: Profile | null
+  profile: Profile | null;
   /** True while the initial session is being loaded */
-  isLoading: boolean
+  isLoading: boolean;
   /** Send reset password email */
-  resetPassword: (params: { email: string }) => Promise<void>
+  resetPassword: (params: { email: string }) => Promise<void>;
   /** Update password after recovery link */
-  updatePassword: (params: { password: string }) => Promise<void>
+  updatePassword: (params: { password: string }) => Promise<void>;
   /** Email + password login */
-  login: (params: { email: string; password: string }) => Promise<void>
+  login: (params: { email: string; password: string }) => Promise<void>;
   /** Email + password registration */
-  register: (params: { email: string; password: string; fullName: string }) => Promise<void>
+  register: (params: {
+    email: string;
+    password: string;
+    fullName: string;
+  }) => Promise<void>;
   /** Magic link — sends OTP email for passwordless login/registration */
-  sendMagicLink: (params: { email: string; fullName?: string }) => Promise<void>
+  sendMagicLink: (params: {
+    email: string;
+    fullName?: string;
+  }) => Promise<void>;
   /** Google OAuth login */
-  loginWithGoogle: () => Promise<void>
+  loginWithGoogle: () => Promise<void>;
   /** Sign out and clear all cached data */
-  logout: () => Promise<void>
+  logout: () => Promise<void>;
   /** Mutation states */
-  isLoggingIn: boolean
-  isRegistering: boolean
-  isLoggingInWithGoogle: boolean
-  isLoggingOut: boolean
-  isSendingMagicLink: boolean
-  isResettingPassword: boolean
-  isUpdatingPassword: boolean
+  isLoggingIn: boolean;
+  isRegistering: boolean;
+  isLoggingInWithGoogle: boolean;
+  isLoggingOut: boolean;
+  isSendingMagicLink: boolean;
+  isResettingPassword: boolean;
+  isUpdatingPassword: boolean;
   /** Mutation errors */
-  loginError: Error | null
-  registerError: Error | null
+  loginError: Error | null;
+  registerError: Error | null;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 interface AuthProviderProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // ── Session query ──────────────────────────────────────────────────────────
   // Fetches the current session on mount and when invalidated.
@@ -69,11 +78,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { data: session, isLoading } = useQuery({
     queryKey: ['auth', 'session'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      return session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      return session;
     },
     staleTime: 0, // Auth should always be fresh
-  })
+  });
 
   // ── Profile query ──────────────────────────────────────────────────────────
   // Only fetches when we have a logged-in user with an ID.
@@ -81,18 +92,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { data: rawProfile } = useQuery({
     queryKey: ['auth', 'profile', session?.user?.id],
     queryFn: async () => {
-      if (!session?.user?.id) return null
+      if (!session?.user?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .single()
+        .single();
 
-      if (error) throw error
-      return data as Profile
+      if (error) throw error;
+      return data as Profile;
     },
     enabled: !!session?.user?.id,
-  })
+  });
 
   // Fallback to Google avatar if profiles row lacks one
   const profile: Profile | null = rawProfile
@@ -103,85 +114,108 @@ export function AuthProvider({ children }: AuthProviderProps) {
           (session?.user?.user_metadata?.avatar_url as string | undefined) ||
           null,
       }
-    : null
+    : null;
 
   // ── Auth state change listener ─────────────────────────────────────────────
   // Keeps the query cache in sync across browser tabs and after OAuth redirects.
   // Without this, the session query would be stale after login/logout.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        // Update the session query cache directly — avoids a network round-trip
-        queryClient.setQueryData(['auth', 'session'], session)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Update the session query cache directly — avoids a network round-trip
+      queryClient.setQueryData(['auth', 'session'], session);
 
-        // Invalidate profile to refetch with the new user ID
-        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] })
-      }
-    )
+      // Invalidate profile to refetch with the new user ID
+      queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] });
+    });
 
-    return () => subscription.unsubscribe()
-  }, [queryClient])
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
 
   // ── Login mutation ─────────────────────────────────────────────────────────
   const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      return data
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] })
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       // Sync Google avatar into profiles if missing
-      const avatarUrl = data.user?.user_metadata?.avatar_url as string | undefined
+      const avatarUrl = data.user?.user_metadata?.avatar_url as
+        | string
+        | undefined;
       if (avatarUrl && data.user?.id) {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('avatar_url')
           .eq('id', data.user.id)
-          .single()
+          .single();
         if (profileData && !profileData.avatar_url) {
-          await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', data.user.id)
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: avatarUrl })
+            .eq('id', data.user.id);
         }
       }
     },
-  })
+  });
 
   // ── Register mutation ──────────────────────────────────────────────────────
   const registerMutation = useMutation({
-    mutationFn: async ({ email, password, fullName }: { email: string; password: string; fullName: string }) => {
+    mutationFn: async ({
+      email,
+      password,
+      fullName,
+    }: {
+      email: string;
+      password: string;
+      fullName: string;
+    }) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: fullName },
         },
-      })
-      if (error) throw error
+      });
+      if (error) throw error;
 
       // Crear perfil (will be handled by DB trigger in production,
       // but kept here as fallback for backward compatibility)
       if (data.user) {
-        const avatarUrl = (data.user.user_metadata?.avatar_url as string | undefined) || null
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            full_name: fullName,
-            avatar_url: avatarUrl,
-            subscription_status: 'trial',
-            trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          })
+        const avatarUrl =
+          (data.user.user_metadata?.avatar_url as string | undefined) || null;
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: data.user.id,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          subscription_status: 'trial',
+          trial_ends_at: new Date(
+            Date.now() + 30 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        });
 
         // Ignore duplicate key error (trigger already created the profile)
-        if (profileError && profileError.code !== '23505') throw profileError
+        if (profileError && profileError.code !== '23505') throw profileError;
       }
 
-      return data
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] })
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
-  })
+  });
 
   // ── Google OAuth mutation ──────────────────────────────────────────────────
   // Redirects to Google's consent screen. After auth, Supabase redirects back
@@ -197,19 +231,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
             prompt: 'consent',
           },
         },
-      })
-      if (error) throw error
-      return data
+      });
+      if (error) throw error;
+      return data;
     },
-  })
+  });
 
   // ── Magic Link mutation ──────────────────────────────────────────────────
   // Sends a one-time password link via email. Works for both new and existing users.
   // Stores pending profile name in localStorage for profile creation after auth.
   const sendMagicLinkMutation = useMutation({
-    mutationFn: async ({ email, fullName }: { email: string; fullName?: string }) => {
+    mutationFn: async ({
+      email,
+      fullName,
+    }: {
+      email: string;
+      fullName?: string;
+    }) => {
       // Store name so ConfirmEmailPage can create the profile after auth
-      if (fullName) localStorage.setItem('pending_profile_name', fullName)
+      if (fullName) localStorage.setItem('pending_profile_name', fullName);
 
       // Try signInWithOtp first (works for existing users)
       const { error } = await supabase.auth.signInWithOtp({
@@ -217,21 +257,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         options: {
           emailRedirectTo: `${window.location.origin}/confirmar-email`,
         },
-      })
+      });
 
       if (error) {
         // If user doesn't exist, create account first then send OTP
-        if (error.message.includes('not found') || error.message.includes('invalid')) {
-          const tempPassword = crypto.randomUUID()
+        if (
+          error.message.includes('not found') ||
+          error.message.includes('invalid')
+        ) {
+          const tempPassword = crypto.randomUUID();
           const { error: signUpError } = await supabase.auth.signUp({
             email,
             password: tempPassword,
             options: {
               data: { full_name: fullName },
             },
-          })
-          if (signUpError && !signUpError.message.includes('already registered')) {
-            throw signUpError
+          });
+          if (
+            signUpError &&
+            !signUpError.message.includes('already registered')
+          ) {
+            throw signUpError;
           }
 
           // Now send the OTP
@@ -240,14 +286,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             options: {
               emailRedirectTo: `${window.location.origin}/confirmar-email`,
             },
-          })
-          if (otpError) throw otpError
-          return
+          });
+          if (otpError) throw otpError;
+          return;
         }
-        throw error
+        throw error;
       }
     },
-  })
+  });
 
   // ── Reset password mutation ──────────────────────────────────────────────
   // Sends a password reset email with a recovery link.
@@ -255,34 +301,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     mutationFn: async ({ email }: { email: string }) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/actualizar-contrasenia`,
-      })
-      if (error) throw error
+      });
+      if (error) throw error;
     },
-  })
+  });
 
   // ── Update password mutation ─────────────────────────────────────────────
   // Called after user clicks the recovery link and sets a new password.
   const updatePasswordMutation = useMutation({
     mutationFn: async ({ password }: { password: string }) => {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] })
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
-  })
+  });
 
   // ── Logout mutation ────────────────────────────────────────────────────────
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     },
     onSuccess: () => {
       // Clear all cached data — ensures no stale auth state leaks
-      queryClient.clear()
+      queryClient.clear();
     },
-  })
+  });
 
   // ── Context value ──────────────────────────────────────────────────────────
   // Wrap mutateAsync calls to return void — consumers don't need mutation data
@@ -290,13 +336,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     session: session ?? null,
     profile,
     isLoading,
-    login: async (params) => { await loginMutation.mutateAsync(params) },
-    register: async (params) => { await registerMutation.mutateAsync(params) },
-    sendMagicLink: async (params) => { await sendMagicLinkMutation.mutateAsync(params) },
-    loginWithGoogle: async () => { await googleMutation.mutateAsync() },
-    logout: async () => { await logoutMutation.mutateAsync() },
-    resetPassword: async (params) => { await resetPasswordMutation.mutateAsync(params) },
-    updatePassword: async (params) => { await updatePasswordMutation.mutateAsync(params) },
+    login: async (params) => {
+      await loginMutation.mutateAsync(params);
+    },
+    register: async (params) => {
+      await registerMutation.mutateAsync(params);
+    },
+    sendMagicLink: async (params) => {
+      await sendMagicLinkMutation.mutateAsync(params);
+    },
+    loginWithGoogle: async () => {
+      await googleMutation.mutateAsync();
+    },
+    logout: async () => {
+      await logoutMutation.mutateAsync();
+    },
+    resetPassword: async (params) => {
+      await resetPasswordMutation.mutateAsync(params);
+    },
+    updatePassword: async (params) => {
+      await updatePasswordMutation.mutateAsync(params);
+    },
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     isLoggingInWithGoogle: googleMutation.isPending,
@@ -306,13 +366,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isUpdatingPassword: updatePasswordMutation.isPending,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
-  }
+  };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -327,9 +383,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
  * const { session, profile, login, logout } = useAuth()
  */
 export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an <AuthProvider>')
+    throw new Error('useAuth must be used within an <AuthProvider>');
   }
-  return context
+  return context;
 }

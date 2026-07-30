@@ -1,13 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../../../lib/supabase'
-import { useAuth } from '../../../contexts/AuthContext'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import type { SubscriptionPlan } from '../../../types'
-import Navbar from '../../../components/layout/Navbar'
-import Footer from '../../../components/layout/Footer'
-import { formatPrice } from '../../../lib/utils'
-import { hasActiveBenefits, isInTrial as isInTrialCheck, getTrialDaysLeft } from '../../../lib/subscription'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import type { SubscriptionPlan } from '../../../types';
+import Navbar from '../../../components/layout/Navbar';
+import Footer from '../../../components/layout/Footer';
+import { formatPrice } from '../../../lib/utils';
+import {
+  hasActiveBenefits,
+  isInTrial as isInTrialCheck,
+  getTrialDaysLeft,
+} from '../../../lib/subscription';
 
 function useSubscriptionPlans() {
   return useQuery({
@@ -17,77 +21,84 @@ function useSubscriptionPlans() {
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
-        .order('listing_priority', { ascending: false })
+        .order('listing_priority', { ascending: false });
 
-      if (error) throw error
-      return data as SubscriptionPlan[]
+      if (error) throw error;
+      return data as SubscriptionPlan[];
     },
-  })
+  });
 }
 
 export default function PlansPage() {
-  const { data: plans, isLoading } = useSubscriptionPlans()
-  const { session, profile } = useAuth()
-  const [searchParams] = useSearchParams()
-  const queryClient = useQueryClient()
-  const [syncResult, setSyncResult] = useState<string | null>(null)
+  const { data: plans, isLoading } = useSubscriptionPlans();
+  const { session, profile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   // After MercadoPago redirect, sync subscription status
   useEffect(() => {
-    const preapprovalId = searchParams.get('preapproval_id')
+    const preapprovalId = searchParams.get('preapproval_id');
     if (preapprovalId && session) {
       supabase.functions.invoke('sync-subscription').then(({ error }) => {
         if (error) {
-          console.error('sync-subscription error:', error)
+          console.error('sync-subscription error:', error);
         }
         // Always invalidate profile cache so UI reflects current state
-        queryClient.invalidateQueries({ queryKey: ['auth'] })
+        queryClient.invalidateQueries({ queryKey: ['auth'] });
         // Clean URL params so re-renders don't re-trigger sync
-        window.history.replaceState({}, '', '/planes')
-      })
+        window.history.replaceState({}, '', '/planes');
+      });
     }
-  }, [searchParams, session, queryClient])
+  }, [searchParams, session, queryClient]);
 
-  const hasActivePlan = hasActiveBenefits(profile)
+  const hasActivePlan = hasActiveBenefits(profile);
 
   // Trial logic
-  const isInTrial = isInTrialCheck(profile)
+  const isInTrial = isInTrialCheck(profile);
 
-  const trialDaysLeft = getTrialDaysLeft(profile) ?? 0
+  const trialDaysLeft = getTrialDaysLeft(profile) ?? 0;
 
   const createSubscription = useMutation({
     mutationFn: async (planId: string) => {
-      const { data, error } = await supabase.functions.invoke('create-subscription', {
-        body: {
-          plan_id: planId,
-          payer_email: session?.user?.email,
-          back_url: `${window.location.origin}/planes`,
+      const { data, error } = await supabase.functions.invoke(
+        'create-subscription',
+        {
+          body: {
+            plan_id: planId,
+            payer_email: session?.user?.email,
+            back_url: `${window.location.origin}/planes`,
+          },
         },
-      })
-      if (error) throw error
-      return data
+      );
+      if (error) throw error;
+      return data;
     },
     onSuccess: (data) => {
       if (data?.init_point) {
-        window.location.href = data.init_point
+        window.location.href = data.init_point;
       }
     },
-  })
+  });
 
   const syncSubscription = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('sync-subscription')
-      if (error) throw error
-      return data
+      const { data, error } = await supabase.functions.invoke(
+        'sync-subscription',
+      );
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth'] })
-      setSyncResult('¡Suscripción sincronizada! Recargá la página.')
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      setSyncResult('¡Suscripción sincronizada! Recargá la página.');
     },
     onError: () => {
-      setSyncResult('No se pudo sincronizar. Verificá que hayas completado el pago.')
+      setSyncResult(
+        'No se pudo sincronizar. Verificá que hayas completado el pago.',
+      );
     },
-  })
+  });
 
   if (isLoading) {
     return (
@@ -98,7 +109,7 @@ export default function PlansPage() {
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   return (
@@ -122,13 +133,16 @@ export default function PlansPage() {
           {isInTrial && (
             <div className="bg-green-50 border border-green-200 rounded-[14px] p-lg mb-xl max-w-2xl mx-auto">
               <div className="flex items-center gap-3 mb-2">
-                <span className="material-symbols-outlined text-green-600">celebration</span>
+                <span className="material-symbols-outlined text-green-600">
+                  celebration
+                </span>
                 <h3 className="font-label-bold text-label-bold text-green-800">
                   Estás en periodo de prueba
                 </h3>
               </div>
               <p className="text-green-700 text-sm mb-3">
-                Te quedan <strong>{trialDaysLeft}</strong> {trialDaysLeft === 1 ? 'día' : 'días'} de premium gratis
+                Te quedan <strong>{trialDaysLeft}</strong>{' '}
+                {trialDaysLeft === 1 ? 'día' : 'días'} de premium gratis
               </p>
               <div className="w-full bg-green-200 rounded-full h-2">
                 <div
@@ -142,7 +156,7 @@ export default function PlansPage() {
           {plans && plans.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-xl md:gap-gutter max-w-4xl mx-auto">
               {[...plans].reverse().map((plan) => {
-                const isPremium = plan.slug === 'premium'
+                const isPremium = plan.slug === 'premium';
                 return (
                   <div
                     key={plan.id}
@@ -167,7 +181,9 @@ export default function PlansPage() {
                         )}
                       </h3>
                       <p className="font-body-base text-body-base text-text-secondary mt-sm">
-                        {isPremium ? 'Máximo rendimiento y soporte.' : 'Ideal para empezar a destacar.'}
+                        {isPremium
+                          ? 'Máximo rendimiento y soporte.'
+                          : 'Ideal para empezar a destacar.'}
                       </p>
                     </div>
                     <div className="mb-xxl">
@@ -176,22 +192,34 @@ export default function PlansPage() {
                           {formatPrice(plan.price)}
                         </span>
                       )}
-                      <span className={`font-display-lg text-display-lg ${isInTrial ? 'text-green-600' : 'text-text-deep'}`}>
+                      <span
+                        className={`font-display-lg text-display-lg ${
+                          isInTrial ? 'text-green-600' : 'text-text-deep'
+                        }`}
+                      >
                         {isInTrial ? 'Gratis' : formatPrice(plan.price)}
                       </span>
-                      {!isInTrial && <span className="font-body-base text-body-base text-text-secondary">/mes</span>}
+                      {!isInTrial && (
+                        <span className="font-body-base text-body-base text-text-secondary">
+                          /mes
+                        </span>
+                      )}
                     </div>
                     <ul className="flex flex-col gap-md mb-xxl flex-grow">
                       {plan.features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-sm">
                           <span
                             className={`material-symbols-outlined text-[20px] mt-[2px] ${
-                              isPremium ? 'text-primary-container' : 'text-secondary'
+                              isPremium
+                                ? 'text-primary-container'
+                                : 'text-secondary'
                             }`}
                           >
                             check_circle
                           </span>
-                          <span className="font-body-base text-body-base text-text-deep">{feature}</span>
+                          <span className="font-body-base text-body-base text-text-deep">
+                            {feature}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -211,7 +239,9 @@ export default function PlansPage() {
                         disabled
                         className="w-full font-label-bold text-label-bold rounded-[14px] h-[56px] bg-green-100 text-green-700 cursor-not-allowed mt-auto flex items-center justify-center gap-2"
                       >
-                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                        <span className="material-symbols-outlined text-[20px]">
+                          check_circle
+                        </span>
                         Ya lo tenés gratis
                       </button>
                     ) : hasActivePlan ? (
@@ -229,13 +259,19 @@ export default function PlansPage() {
                           isPremium
                             ? 'bg-primary-container text-on-primary hover:opacity-90'
                             : 'bg-bg-peach-mid text-text-secondary hover:bg-[#FFD6BD]'
-                        } ${createSubscription.isPending ? 'opacity-50 cursor-wait' : ''}`}
+                        } ${
+                          createSubscription.isPending
+                            ? 'opacity-50 cursor-wait'
+                            : ''
+                        }`}
                       >
-                        {createSubscription.isPending ? 'Procesando...' : `Elegir ${plan.name}`}
+                        {createSubscription.isPending
+                          ? 'Procesando...'
+                          : `Elegir ${plan.name}`}
                       </button>
                     )}
                   </div>
-                )
+                );
               })}
             </div>
           ) : (
@@ -256,15 +292,26 @@ export default function PlansPage() {
         {session && !hasActivePlan && !isInTrial && (
           <section className="max-w-7xl mx-auto w-full px-margin-mobile md:px-margin-desktop mt-lg text-center">
             <button
-              onClick={() => { setSyncResult(null); syncSubscription.mutate() }}
+              onClick={() => {
+                setSyncResult(null);
+                syncSubscription.mutate();
+              }}
               disabled={syncSubscription.isPending}
               className="inline-flex items-center gap-2 px-lg py-3 rounded-[14px] bg-surface-container-low border border-border-light text-sm font-label-bold text-text-secondary hover:bg-surface-container hover:text-text-deep hover:border-border-default transition-all duration-200 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-              {syncSubscription.isPending ? 'Sincronizando...' : 'Ya pagué, verificar mi suscripción'}
+              <span className="material-symbols-outlined text-[18px]">
+                receipt_long
+              </span>
+              {syncSubscription.isPending
+                ? 'Sincronizando...'
+                : 'Ya pagué, verificar mi suscripción'}
             </button>
             {syncResult && (
-              <p className={`mt-sm text-sm ${syncResult.includes('¡') ? 'text-green-600' : 'text-red-600'}`}>
+              <p
+                className={`mt-sm text-sm ${
+                  syncResult.includes('¡') ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
                 {syncResult}
               </p>
             )}
@@ -274,5 +321,5 @@ export default function PlansPage() {
 
       <Footer />
     </div>
-  )
+  );
 }

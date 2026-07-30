@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Umpi — Promo V4</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050508;
+      --primary: #FF6B35;
+      --primary-soft: #ff8c5e;
+      --primary-glow: rgba(255,107,53,0.35);
+      --primary-glow-strong: rgba(255,107,53,0.6);
+      --cyan: #00f5d4;
+      --cyan-glow: rgba(0,245,212,0.2);
+      --gold: #FFD700;
+      --gold-glow: rgba(255,215,0,0.25);
+      --ink: #ffffff;
+      --ink-soft: rgba(255,255,255,0.7);
+      --ink-muted: rgba(255,255,255,0.35);
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.08);
+      --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .letterbox { position: absolute; left: 0; right: 0; height: 5%; background: var(--bg); z-index: 100; pointer-events: none; }
+    .letterbox-top { top: 0; }
+    .letterbox-bottom { bottom: 0; }
+
+    .mesh-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(255,107,53,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 70%, rgba(0,245,212,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .particles { position: absolute; inset: 0; pointer-events: none; }
+    .particle { position: absolute; border-radius: 50%; opacity: 0; }
+
+    .scene { position: absolute; inset: 0; opacity: 0; display: flex; align-items: center; justify-content: center; }
+    .scene.clip { opacity: 1; }
+
+    /* ── Material icons ─────────────────────────────── */
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+    /* ═══ SCENE 1: Ignition (0-3s) ════════════════════ */
+    .scene-1 { flex-direction: column; gap: 8px; z-index: 20; }
+
+    .s1-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      box-shadow: 0 0 30px var(--primary-glow-strong);
+    }
+
+    .s1-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .s1-text {
+      font-size: 80px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      opacity: 0;
+      text-shadow: 0 0 40px var(--primary-glow);
+    }
+
+    .s1-sub {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    /* ═══ SCENE 2: Publicá (3-7s) ═════════════════════ */
+    .scene-2 { flex-direction: row; gap: 60px; padding: 0 100px; z-index: 20; }
+
+    .s2-left { flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+    .s2-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+
+    .s2-step-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .s2-step-icon .material-symbols-outlined {
+      font-size: 24px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .s2-icon-orange { background: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+    .s2-icon-cyan { background: var(--cyan); box-shadow: 0 0 20px var(--cyan-glow); }
+    .s2-icon-gold { background: var(--gold); box-shadow: 0 0 20px var(--gold-glow); }
+
+    .s2-step-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .s2-step-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+
+    .s2-right { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+
+    .s2-phone {
+      width: 240px;
+      height: 420px;
+      background: #0d0f14;
+      border-radius: 28px;
+      border: 2px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      opacity: 0;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+
+    .s2-phone-notch { width: 100px; height: 24px; background: #000; border-radius: 0 0 14px 14px; margin: 0 auto; }
+
+    .s2-phone-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+    .s2-phone-img {
+      width: 100%;
+      height: 130px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1a2332 0%, #2a1a12 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .s2-phone-img-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+
+    .s2-phone-img-overlay .material-symbols-outlined {
+      font-size: 36px;
+      color: var(--ink-muted);
+    }
+
+    .s2-phone-field {
+      height: 14px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      transform-origin: left;
+      transform: scaleX(0);
+    }
+
+    .s2-phone-field-price {
+      height: 20px;
+      background: var(--primary);
+      border-radius: 8px;
+      width: 40%;
+      opacity: 0;
+    }
+
+    .s2-phone-btn {
+      height: 40px;
+      background: var(--primary);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      opacity: 0;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    .s2-phone-check {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 70px;
+      height: 70px;
+      background: var(--cyan);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px var(--cyan-glow);
+      z-index: 5;
+    }
+
+    .s2-phone-check .material-symbols-outlined {
+      font-size: 36px;
+      color: var(--bg);
+      font-variation-settings: 'FILL' 1;
+    }
+
+    /* ═══ SCENE 3: Destacá (7-11s) ════════════════════ */
+    .scene-3 { flex-direction: column; gap: 30px; z-index: 20; }
+
+    .s3-header {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--ink);
+      opacity: 0;
+    }
+
+    .s3-header span { color: var(--primary); }
+
+    .s3-features {
+      display: flex;
+      gap: 20px;
+    }
+
+    .s3-card {
+      width: 260px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      opacity: 0;
+      transform: translateY(30px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .s3-card-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s3-card-icon .material-symbols-outlined {
+      font-size: 26px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .s3-card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    .s3-card-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--ink-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .s3-card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .badge-orange { background: rgba(255,107,53,0.12); color: var(--primary); }
+    .badge-cyan { background: rgba(0,245,212,0.1); color: var(--cyan); }
+    .badge-gold { background: rgba(255,215,0,0.1); color: var(--gold); }
+
+    /* ═══ SCENE 4: Vendé (11-15s) ═════════════════════ */
+    .scene-4 { flex-direction: column; gap: 20px; padding: 0 200px; z-index: 20; }
+
+    .s4-header {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--ink);
+      opacity: 0;
+    }
+
+    .s4-header span { color: var(--primary); }
+
+    .s4-chat {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .s4-bubble {
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.4;
+      opacity: 0;
+      max-width: 75%;
+    }
+
+    .s4-bubble-buyer {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      color: var(--ink);
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+    }
+
+    .s4-bubble-seller {
+      background: var(--primary);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+    }
+
+    .s4-bubble-name {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .s4-bubble-buyer .s4-bubble-name { color: var(--cyan); }
+    .s4-bubble-seller .s4-bubble-name { color: rgba(255,255,255,0.7); }
+
+    .s4-success {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,245,212,0.08);
+      border: 1px solid rgba(0,245,212,0.15);
+      border-radius: 16px;
+      padding: 14px 24px;
+      opacity: 0;
+    }
+
+    .s4-success .material-symbols-outlined {
+      font-size: 28px;
+      color: var(--cyan);
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .s4-success-text {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+
+    /* ═══ SCENE 5: Crece (15-18s) ═════════════════════ */
+    .scene-5 { flex-direction: row; gap: 40px; padding: 0 80px; z-index: 20; }
+
+    .s5-left { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+    .s5-stat {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    .s5-stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .s5-stat-icon .material-symbols-outlined {
+      font-size: 20px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .s5-stat-text { font-size: 13px; color: var(--ink-muted); font-weight: 500; }
+    .s5-stat-value { font-size: 22px; font-weight: 800; }
+
+    .s5-right { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+    .s5-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .s5-mini-card {
+      width: 160px;
+      height: 100px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+      opacity: 0;
+      transform: scale(0.8);
+    }
+
+    .s5-mini-card-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      width: 70%;
+      margin-bottom: 6px;
+    }
+
+    .s5-mini-card-price {
+      height: 10px;
+      background: var(--primary);
+      border-radius: 4px;
+      width: 35%;
+    }
+
+    .s5-mini-card:nth-child(1) .s5-mini-card-price { background: var(--primary); }
+    .s5-mini-card:nth-child(2) .s5-mini-card-price { background: var(--cyan); }
+    .s5-mini-card:nth-child(3) .s5-mini-card-price { background: var(--gold); }
+    .s5-mini-card:nth-child(4) .s5-mini-card-price { background: var(--primary); }
+
+    /* ═══ SCENE 6: Final (18-20s) ═════════════════════ */
+    .scene-6 { flex-direction: column; gap: 18px; z-index: 30; }
+
+    .s6-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,107,53,0.1);
+      border: 1px solid rgba(255,107,53,0.2);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-soft);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    .s6-badge .material-symbols-outlined { font-size: 16px; font-variation-settings: 'FILL' 1; }
+
+    .s6-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      opacity: 0;
+    }
+
+    .s6-logo-box {
+      width: 68px;
+      height: 68px;
+      background: var(--primary);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 50px var(--primary-glow-strong);
+    }
+
+    .s6-logo-box .material-symbols-outlined { font-size: 36px; color: white; font-variation-settings: 'FILL' 1; }
+
+    .s6-brand { font-size: 52px; font-weight: 900; letter-spacing: -2px; }
+
+    .s6-url {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: 3px;
+      opacity: 0;
+    }
+
+    .s6-cta {
+      margin-top: 4px;
+      padding: 16px 48px;
+      background: var(--primary);
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 14px 44px var(--primary-glow-strong);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .s6-footer {
+      font-size: 13px;
+      color: var(--ink-muted);
+      opacity: 0;
+      letter-spacing: 2px;
+    }
+
+    /* ── Shockwaves ─────────────────────────────────── */
+    .shockwave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      opacity: 0;
+      z-index: 15;
+    }
+
+    .sw-1 { border: 2px solid var(--primary); }
+    .sw-2 { border: 1px solid var(--cyan); }
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="umpi-promo-v4" data-start="0" data-width="1920" data-height="1080" data-duration="20">
+
+    <div class="letterbox letterbox-top"></div>
+    <div class="letterbox letterbox-bottom"></div>
+    <div class="mesh-bg" id="mesh-bg"></div>
+    <div class="particles" id="particles"></div>
+    <div class="s1-ring" id="s1-ring"></div>
+    <div class="shockwave sw-1" id="sw1"></div>
+    <div class="shockwave sw-2" id="sw2"></div>
+
+    <!-- ═══ SCENE 1: Ignition (0-3s) ════════════════════ -->
+    <div class="scene scene-1 clip" data-start="0" data-duration="3" data-track-index="0">
+      <div class="s1-dot" id="s1-dot"></div>
+      <div class="s1-text" id="s1-text">Umpi</div>
+      <div class="s1-sub" id="s1-sub">tu mercado digital</div>
+    </div>
+
+    <!-- ═══ SCENE 2: Publicá (3-7s) ═════════════════════ -->
+    <div class="scene scene-2 clip" data-start="3" data-duration="4" data-track-index="0">
+      <div class="s2-left">
+        <div class="s2-step" id="s2-step1">
+          <div class="s2-step-icon s2-icon-orange"><span class="material-symbols-outlined">add_a_photo</span></div>
+          <div><div class="s2-step-text">Subí fotos</div><div class="s2-step-desc">Hasta 20 imágenes por aviso</div></div>
+        </div>
+        <div class="s2-step" id="s2-step2">
+          <div class="s2-step-icon s2-icon-cyan"><span class="material-symbols-outlined">edit</span></div>
+          <div><div class="s2-step-text">Describilo</div><div class="s2-step-desc">Precio, categoría y detalle</div></div>
+        </div>
+        <div class="s2-step" id="s2-step3">
+          <div class="s2-step-icon s2-icon-gold"><span class="material-symbols-outlined">publish</span></div>
+          <div><div class="s2-step-text">Publicalo</div><div class="s2-step-desc">En 2 minutos está online</div></div>
+        </div>
+      </div>
+      <div class="s2-right">
+        <div class="s2-phone" id="s2-phone">
+          <div class="s2-phone-notch"></div>
+          <div class="s2-phone-body">
+            <div class="s2-phone-img">
+              <div class="s2-phone-img-overlay" id="s2-img-overlay"><span class="material-symbols-outlined">add_a_photo</span></div>
+            </div>
+            <div class="s2-phone-field" id="s2-f1"></div>
+            <div class="s2-phone-field" id="s2-f2"></div>
+            <div class="s2-phone-field-price" id="s2-price"></div>
+            <div class="s2-phone-btn" id="s2-btn">Publicar aviso</div>
+          </div>
+        </div>
+        <div class="s2-phone-check" id="s2-check"><span class="material-symbols-outlined">check</span></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCENE 3: Destacá (7-11s) ════════════════════ -->
+    <div class="scene scene-3 clip" data-start="7" data-duration="4" data-track-index="0">
+      <div class="s3-header" id="s3-header">Destacá. <span>Brillá.</span> Vendé más.</div>
+      <div class="s3-features">
+        <div class="s3-card" id="s3-card1">
+          <div class="s3-card-icon s2-icon-orange"><span class="material-symbols-outlined">star</span></div>
+          <div class="s3-card-title">Destacados</div>
+          <div class="s3-card-desc">Tu aviso aparece primero en búsquedas y en la página principal</div>
+          <div class="s3-card-badge badge-orange">Mayor visibilidad</div>
+        </div>
+        <div class="s3-card" id="s3-card2">
+          <div class="s3-card-icon s2-icon-cyan"><span class="material-symbols-outlined">diamond</span></div>
+          <div class="s3-card-title">Planes flexibles</div>
+          <div class="s3-card-desc">Estandar o Premium. Adaptados a tu negocio</div>
+          <div class="s3-card-badge badge-cyan">Desde $5.900/mes</div>
+        </div>
+        <div class="s3-card" id="s3-card3">
+          <div class="s3-card-icon s2-icon-gold"><span class="material-symbols-outlined">trending_up</span></div>
+          <div class="s3-card-title">Más ventas</div>
+          <div class="s3-card-desc">Los destacados reciben 5x más contactos que los normales</div>
+          <div class="s3-card-badge badge-gold">Estadística real</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCENE 4: Vendé (11-15s) ═════════════════════ -->
+    <div class="scene scene-4 clip" data-start="11" data-duration="4" data-track-index="0">
+      <div class="s4-header" id="s4-header">Vendé por <span>chat</span></div>
+      <div class="s4-chat">
+        <div class="s4-bubble s4-bubble-buyer" id="s4-b1"><div class="s4-bubble-name">Comprador</div>Hola! Sigue disponible?</div>
+        <div class="s4-bubble s4-bubble-seller" id="s4-b2"><div class="s4-bubble-name">Vendedor</div>Sí! Te lo puedo reservar</div>
+        <div class="s4-bubble s4-bubble-buyer" id="s4-b3"><div class="s4-bubble-name">Comprador</div>Genial, cuándo puedo pasar?</div>
+        <div class="s4-success" id="s4-success"><span class="material-symbols-outlined">check_circle</span><span class="s4-success-text">¡Venta concretada!</span></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCENE 5: Crece (15-18s) ═════════════════════ -->
+    <div class="scene scene-5 clip" data-start="15" data-duration="3" data-track-index="0">
+      <div class="s5-left">
+        <div class="s5-stat" id="s5-st1">
+          <div class="s5-stat-icon s2-icon-cyan"><span class="material-symbols-outlined">visibility</span></div>
+          <div><div class="s5-stat-text">Visitas totales</div><div class="s5-stat-value" style="color:var(--cyan)">1.247</div></div>
+        </div>
+        <div class="s5-stat" id="s5-st2">
+          <div class="s5-stat-icon s2-icon-orange"><span class="material-symbols-outlined">chat</span></div>
+          <div><div class="s5-stat-text">Conversaciones</div><div class="s5-stat-value" style="color:var(--primary)">86</div></div>
+        </div>
+        <div class="s5-stat" id="s5-st3">
+          <div class="s5-stat-icon s2-icon-gold"><span class="material-symbols-outlined">star</span></div>
+          <div><div class="s5-stat-text">Reputación</div><div class="s5-stat-value" style="color:var(--gold)">4.9 / 5.0</div></div>
+        </div>
+      </div>
+      <div class="s5-right">
+        <div class="s5-grid">
+          <div class="s5-mini-card" id="s5-mc1"><div class="s5-mini-card-bar"></div><div class="s5-mini-card-price"></div></div>
+          <div class="s5-mini-card" id="s5-mc2"><div class="s5-mini-card-bar"></div><div class="s5-mini-card-price"></div></div>
+          <div class="s5-mini-card" id="s5-mc3"><div class="s5-mini-card-bar"></div><div class="s5-mini-card-price"></div></div>
+          <div class="s5-mini-card" id="s5-mc4"><div class="s5-mini-card-bar"></div><div class="s5-mini-card-price"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCENE 6: Final (18-20s) ═════════════════════ -->
+    <div class="scene scene-6 clip" data-start="18" data-duration="2" data-track-index="0">
+      <div class="s6-badge" id="s6-badge"><span class="material-symbols-outlined">bolt</span>Publicá en 2 minutos</div>
+      <div class="s6-logo-row" id="s6-logo">
+        <div class="s6-logo-box"><span class="material-symbols-outlined">storefront</span></div>
+        <div class="s6-brand">Umpi</div>
+      </div>
+      <div class="s6-url" id="s6-url">umpi.com.ar</div>
+      <div class="s6-cta" id="s6-cta">Empezá gratis hoy</div>
+      <div class="s6-footer" id="s6-footer">Tu barrio digital · Tu comunidad</div>
+    </div>
+
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // ── Particles ─────────────────────────────────────────
+    const particlesEl = document.getElementById('particles');
+    for (let i = 0; i < 50; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = 50 + (Math.random() - 0.5) * 30 + '%';
+      p.style.top = 50 + (Math.random() - 0.5) * 30 + '%';
+      const size = 1 + Math.random() * 3;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      const colors = ['var(--primary)', 'var(--cyan)', 'var(--gold)'];
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      particlesEl.appendChild(p);
+    }
+
+    // ═══ SCENE 1 (0-3s) ══════════════════════════════════
+    gsap.set('#s1-dot', { opacity: 0, scale: 0 });
+    gsap.set('#s1-ring', { opacity: 0, width: 0, height: 0 });
+    gsap.set('#s1-text', { opacity: 0, scale: 0.5, y: 20 });
+    gsap.set('#s1-sub', { opacity: 0, y: 10 });
+
+    tl.to('#s1-dot', { opacity: 1, scale: 1, duration: 0.2 }, 0);
+    tl.to('#s1-dot', { scale: 12, opacity: 0, duration: 0.6, ease: 'power2.in' }, 0.2);
+    tl.to('#s1-ring', { opacity: 0.5, width: 400, height: 400, duration: 0.8, ease: 'power2.out' }, 0.3);
+    tl.to('#s1-ring', { opacity: 0, width: 800, height: 800, duration: 0.6 }, 0.8);
+
+    tl.to('.particle', {
+      opacity: () => 0.3 + Math.random() * 0.5,
+      x: () => (Math.random() - 0.5) * 1000,
+      y: () => (Math.random() - 0.5) * 600,
+      duration: 1.2,
+      ease: 'power2.out',
+      stagger: { each: 0.02, from: 'center' },
+    }, 0.3);
+
+    tl.to('#mesh-bg', { opacity: 1, duration: 1, ease: 'power2.out' }, 0.8);
+    tl.to('#s1-text', { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: 'back.out(1.5)' }, 1.0);
+    tl.to('#s1-sub', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.5);
+
+    tl.to('.scene-1', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 2.5);
+    tl.set('.scene-1', { opacity: 0 }, 3.0);
+
+    // ═══ SCENE 2 (3-7s) ══════════════════════════════════
+    gsap.set('.s2-step', { opacity: 0, x: -30 });
+    gsap.set('#s2-phone', { opacity: 0, y: 100, scale: 0.85 });
+    gsap.set('#s2-check', { opacity: 0, scale: 0 });
+
+    tl.to('#s2-phone', { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: 'back.out(1.2)' }, 3.2);
+    tl.to('#s2-step1', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 3.5);
+    tl.to('#s2-img-overlay', { opacity: 1, duration: 0.4 }, 3.8);
+    tl.to('#s2-f1', { scaleX: 1, duration: 0.4, ease: 'power2.out' }, 4.0);
+    tl.to('#s2-step2', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 4.2);
+    tl.to('#s2-f2', { scaleX: 1, duration: 0.4, ease: 'power2.out' }, 4.4);
+    tl.to('#s2-price', { opacity: 1, duration: 0.3 }, 4.6);
+    tl.to('#s2-step3', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 4.8);
+    tl.to('#s2-btn', { opacity: 1, duration: 0.3 }, 5.0);
+    tl.to('#s2-btn', { scale: 1.05, duration: 0.15, yoyo: true, repeat: 1 }, 5.3);
+    tl.to('#s2-check', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }, 5.5);
+
+    tl.to('.scene-2', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 6.5);
+    tl.set('.scene-2', { opacity: 0 }, 7.0);
+
+    // ═══ SCENE 3 (7-11s) ═════════════════════════════════
+    gsap.set('#s3-header', { opacity: 0, y: 15 });
+    gsap.set('.s3-card', { opacity: 0, y: 30 });
+
+    tl.to('#s3-header', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 7.0);
+    tl.to('#s3-card1', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.4)' }, 7.3);
+    tl.to('#s3-card2', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.4)' }, 7.5);
+    tl.to('#s3-card3', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.4)' }, 7.7);
+
+    tl.to('.s3-card', { y: -5, duration: 2, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 8.5);
+
+    tl.to('.scene-3', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 10.5);
+    tl.set('.scene-3', { opacity: 0 }, 11.0);
+
+    // ═══ SCENE 4 (11-15s) ════════════════════════════════
+    gsap.set('#s4-header', { opacity: 0, y: 10 });
+    gsap.set('.s4-bubble', { opacity: 0, y: 12, scale: 0.95 });
+    gsap.set('#s4-success', { opacity: 0, scale: 0.8 });
+
+    tl.to('#s4-header', { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }, 11.0);
+    tl.to('#s4-b1', { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.5)' }, 11.3);
+    tl.to('#s4-b2', { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.5)' }, 12.0);
+    tl.to('#s4-b3', { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.5)' }, 12.7);
+    tl.to('#s4-success', { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.5)' }, 13.4);
+
+    tl.to('.scene-4', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 14.5);
+    tl.set('.scene-4', { opacity: 0 }, 15.0);
+
+    // ═══ SCENE 5 (15-18s) ════════════════════════════════
+    gsap.set('.s5-stat', { opacity: 0, x: -20 });
+    gsap.set('.s5-mini-card', { opacity: 0, scale: 0.8 });
+
+    tl.to('#s5-st1', { opacity: 1, x: 0, duration: 0.4, ease: 'power3.out' }, 15.0);
+    tl.to('#s5-st2', { opacity: 1, x: 0, duration: 0.4, ease: 'power3.out' }, 15.3);
+    tl.to('#s5-st3', { opacity: 1, x: 0, duration: 0.4, ease: 'power3.out' }, 15.6);
+
+    tl.to('#s5-mc1', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.3)' }, 15.3);
+    tl.to('#s5-mc2', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.3)' }, 15.5);
+    tl.to('#s5-mc3', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.3)' }, 15.7);
+    tl.to('#s5-mc4', { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.3)' }, 15.9);
+
+    tl.to('.scene-5', { opacity: 0, duration: 0.5, ease: 'power2.in' }, 17.5);
+    tl.set('.scene-5', { opacity: 0 }, 18.0);
+
+    // ═══ SHOCKWAVES ═══════════════════════════════════════
+    gsap.set('#sw1', { opacity: 0, width: 0, height: 0 });
+    gsap.set('#sw2', { opacity: 0, width: 0, height: 0 });
+    tl.to('#sw1', { opacity: 0.4, width: 700, height: 700, duration: 0.8, ease: 'power2.out' }, 17.8);
+    tl.to('#sw1', { opacity: 0, width: 1100, height: 1100, duration: 0.6 }, 18.2);
+    tl.to('#sw2', { opacity: 0.2, width: 500, height: 500, duration: 0.6, ease: 'power2.out' }, 18.0);
+    tl.to('#sw2', { opacity: 0, width: 900, height: 900, duration: 0.5 }, 18.4);
+
+    // ═══ SCENE 6 (18-20s) ════════════════════════════════
+    gsap.set('#s6-badge', { opacity: 0, y: 8 });
+    gsap.set('#s6-logo', { opacity: 0, scale: 0.7 });
+    gsap.set('#s6-url', { opacity: 0, y: 8 });
+    gsap.set('#s6-cta', { opacity: 0, y: 16, scale: 0.95 });
+    gsap.set('#s6-footer', { opacity: 0, y: 8 });
+
+    tl.to('#s6-badge', { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }, 18.2);
+    tl.to('#s6-logo', { opacity: 1, scale: 1, duration: 0.7, ease: 'back.out(1.8)' }, 18.3);
+    tl.to('#s6-url', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 18.6);
+    tl.to('#s6-cta', { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }, 18.8);
+    tl.to('#s6-footer', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 19.0);
+
+    tl.to('.s6-logo-box', { boxShadow: '0 0 70px rgba(255,107,53,0.6)', duration: 1, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 19.0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines['umpi-promo-v4'] = tl;
+  </script>
+</body>
+</html>

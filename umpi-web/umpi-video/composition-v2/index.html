@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Umpi — Promo V2</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07090f;
+      --bg-warm: #0d0a07;
+      --surface: rgba(255,255,255,0.04);
+      --surface-glass: rgba(255,255,255,0.06);
+      --primary: #FF6B35;
+      --primary-soft: #ff8c5e;
+      --primary-glow: rgba(255,107,53,0.3);
+      --gold: #FFD700;
+      --gold-glow: rgba(255,215,0,0.2);
+      --cyan: #00f5d4;
+      --cyan-glow: rgba(0,245,212,0.15);
+      --ink: #ffffff;
+      --ink-soft: rgba(255,255,255,0.7);
+      --ink-muted: rgba(255,255,255,0.4);
+      --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* ── Cinematic bars ────────────────────────────── */
+    .letterbox {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 8%;
+      background: var(--bg);
+      z-index: 100;
+      pointer-events: none;
+    }
+    .letterbox-top { top: 0; }
+    .letterbox-bottom { bottom: 0; }
+
+    /* ── Ambient particles ─────────────────────────── */
+    .particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+    }
+
+    /* ── Gradient orbs ─────────────────────────────── */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+    }
+
+    .orb-1 {
+      width: 400px;
+      height: 400px;
+      background: var(--primary);
+      opacity: 0.08;
+      top: -150px;
+      right: -100px;
+    }
+
+    .orb-2 {
+      width: 300px;
+      height: 300px;
+      background: var(--cyan);
+      opacity: 0.06;
+      bottom: -100px;
+      left: -80px;
+    }
+
+    .orb-3 {
+      width: 200px;
+      height: 200px;
+      background: var(--gold);
+      opacity: 0.05;
+      top: 40%;
+      left: 50%;
+    }
+
+    /* ── Grid lines ────────────────────────────────── */
+    .grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 80px 80px;
+      pointer-events: none;
+    }
+
+    /* ── Scenes ────────────────────────────────────── */
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene.clip { opacity: 1; }
+
+    /* ═══ SCENE 1: Hero Word ═════════════════════════ */
+    .scene-hero {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .hero-word {
+      font-size: 80px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+    }
+
+    .hero-word .char {
+      display: inline-block;
+      opacity: 0;
+    }
+
+    .hero-cursor {
+      display: inline-block;
+      width: 4px;
+      height: 72px;
+      background: var(--primary);
+      margin-left: 4px;
+      opacity: 0;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-top: 16px;
+      opacity: 0;
+    }
+
+    /* ═══ SCENE 2: Phone + Listing ═══════════════════ */
+    .scene-phone {
+      flex-direction: row;
+      gap: 60px;
+      padding: 0 100px;
+    }
+
+    .phone-container {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .phone {
+      width: 260px;
+      height: 460px;
+      background: #111318;
+      border-radius: 32px;
+      border: 2px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      opacity: 0;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+
+    .phone-notch {
+      width: 120px;
+      height: 28px;
+      background: #000;
+      border-radius: 0 0 16px 16px;
+      margin: 0 auto;
+    }
+
+    .phone-screen {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .phone-img {
+      width: 100%;
+      height: 140px;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-img-bg {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1a2332 0%, #2a1a12 100%);
+    }
+
+    .phone-img-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--primary);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 8px;
+      opacity: 0;
+    }
+
+    .phone-title-bar {
+      height: 14px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      width: 80%;
+    }
+
+    .phone-price {
+      height: 20px;
+      background: var(--primary);
+      border-radius: 8px;
+      width: 40%;
+      opacity: 0;
+    }
+
+    .phone-meta {
+      display: flex;
+      gap: 8px;
+    }
+
+    .phone-meta-chip {
+      height: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      flex: 1;
+    }
+
+    .phone-stats {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .phone-stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--ink-muted);
+      opacity: 0;
+    }
+
+    .phone-stat .material-symbols-outlined {
+      font-size: 14px;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .phone-stat-views .material-symbols-outlined { color: var(--cyan); }
+    .phone-stat-messages .material-symbols-outlined { color: var(--primary); }
+    .phone-stat-rating .material-symbols-outlined { color: var(--gold); }
+
+    /* Floating stats */
+    .float-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .float-stat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+
+    .float-stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .float-stat-icon .material-symbols-outlined {
+      font-size: 22px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .icon-views { background: var(--cyan); box-shadow: 0 0 20px var(--cyan-glow); }
+    .icon-messages { background: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+    .icon-featured { background: var(--gold); box-shadow: 0 0 20px var(--gold-glow); }
+    .icon-rating { background: linear-gradient(135deg, var(--primary), var(--gold)); box-shadow: 0 0 20px var(--primary-glow); }
+
+    .float-stat-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+
+    .float-stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .float-stat-value .highlight-orange { color: var(--primary); }
+    .float-stat-value .highlight-cyan { color: var(--cyan); }
+    .float-stat-value .highlight-gold { color: var(--gold); }
+
+    /* ═══ SCENE 3: Chat Bubbles ═════════════════════ */
+    .scene-chat {
+      flex-direction: column;
+      gap: 24px;
+      padding: 0 200px;
+    }
+
+    .chat-header {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--ink);
+      opacity: 0;
+    }
+
+    .chat-bubbles {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .chat-bubble {
+      padding: 14px 20px;
+      border-radius: 18px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.4;
+      opacity: 0;
+      max-width: 80%;
+    }
+
+    .chat-bubble-buyer {
+      background: var(--surface-glass);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--ink);
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+    }
+
+    .chat-bubble-seller {
+      background: var(--primary);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+    }
+
+    .chat-bubble-buyer .chat-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .chat-bubble-seller .chat-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .chat-typing {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 14px 20px;
+      opacity: 0;
+    }
+
+    .chat-typing-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--ink-muted);
+      border-radius: 50%;
+    }
+
+    /* ═══ SCENE 4: Final ═════════════════════════════ */
+    .scene-final {
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .final-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-glass);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      opacity: 0;
+    }
+
+    .final-badge .material-symbols-outlined {
+      font-size: 16px;
+      color: var(--primary);
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .final-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      opacity: 0;
+    }
+
+    .final-logo-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--primary);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px var(--primary-glow);
+    }
+
+    .final-logo-icon .material-symbols-outlined {
+      font-size: 34px;
+      color: white;
+      font-variation-settings: 'FILL' 1;
+    }
+
+    .final-brand {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: -2px;
+    }
+
+    .final-brand .b { color: var(--ink); }
+
+    .final-url {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      opacity: 0;
+    }
+
+    .final-cta {
+      margin-top: 8px;
+      padding: 16px 44px;
+      background: var(--primary);
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 12px 40px var(--primary-glow);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .final-footer {
+      font-size: 13px;
+      color: var(--ink-muted);
+      font-weight: 400;
+      opacity: 0;
+    }
+
+    /* ── Material icons ─────────────────────────────── */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="umpi-promo-v2" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+
+    <!-- Cinematic letterbox -->
+    <div class="letterbox letterbox-top"></div>
+    <div class="letterbox letterbox-bottom"></div>
+
+    <!-- Background -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid"></div>
+
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- ═══════════ SCENE 1: Hero Word (0-3s) ═══════════ -->
+    <div class="scene scene-hero clip" data-start="0" data-duration="3" data-track-index="0">
+      <div class="hero-word" id="hero-word">Vendé más</div>
+      <div class="hero-cursor" id="hero-cursor"></div>
+      <div class="hero-sub">con tu comunidad</div>
+    </div>
+
+    <!-- ═══════════ SCENE 2: Phone + Stats (3-8s) ═══════════ -->
+    <div class="scene scene-phone clip" data-start="3" data-duration="5" data-track-index="0">
+      <div class="phone-container">
+        <div class="phone" id="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-img">
+              <div class="phone-img-bg"></div>
+              <div class="phone-img-badge" id="img-badge">DESTACADO</div>
+            </div>
+            <div class="phone-title-bar"></div>
+            <div class="phone-price" id="phone-price"></div>
+            <div class="phone-meta">
+              <div class="phone-meta-chip"></div>
+              <div class="phone-meta-chip"></div>
+            </div>
+            <div class="phone-stats">
+              <div class="phone-stat phone-stat-views" id="stat-views">
+                <span class="material-symbols-outlined">visibility</span>
+                <span>247</span>
+              </div>
+              <div class="phone-stat phone-stat-messages" id="stat-messages">
+                <span class="material-symbols-outlined">chat</span>
+                <span>18</span>
+              </div>
+              <div class="phone-stat phone-stat-rating" id="stat-rating">
+                <span class="material-symbols-outlined">star</span>
+                <span>4.9</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="float-stats">
+        <div class="float-stat" id="fs-views">
+          <div class="float-stat-icon icon-views">
+            <span class="material-symbols-outlined">visibility</span>
+          </div>
+          <div>
+            <div class="float-stat-text">Visitas</div>
+            <div class="float-stat-value"><span class="highlight-cyan">247</span> esta semana</div>
+          </div>
+        </div>
+        <div class="float-stat" id="fs-messages">
+          <div class="float-stat-icon icon-messages">
+            <span class="material-symbols-outlined">chat</span>
+          </div>
+          <div>
+            <div class="float-stat-text">Mensajes</div>
+            <div class="float-stat-value"><span class="highlight-orange">18</span> conversaciones</div>
+          </div>
+        </div>
+        <div class="float-stat" id="fs-featured">
+          <div class="float-stat-icon icon-featured">
+            <span class="material-symbols-outlined">star</span>
+          </div>
+          <div>
+            <div class="float-stat-text">Destacado</div>
+            <div class="float-stat-value"><span class="highlight-gold">Premium</span></div>
+          </div>
+        </div>
+        <div class="float-stat" id="fs-rating">
+          <div class="float-stat-icon icon-rating">
+            <span class="material-symbols-outlined">thumb_up</span>
+          </div>
+          <div>
+            <div class="float-stat-text">Reputación</div>
+            <div class="float-stat-value"><span class="highlight-orange">4.9</span> / 5.0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCENE 3: Chat (8-12s) ═══════════ -->
+    <div class="scene scene-chat clip" data-start="8" data-duration="4" data-track-index="0">
+      <div class="chat-header">Vendé por chat</div>
+      <div class="chat-bubbles">
+        <div class="chat-bubble chat-bubble-buyer" id="chat-1">
+          <div class="chat-name">Comprador</div>
+          Hola! Sigue disponible la bicicleta?
+        </div>
+        <div class="chat-bubble chat-bubble-seller" id="chat-2">
+          <div class="chat-name">Vendedor</div>
+          Sí! Te la puedo reservar
+        </div>
+        <div class="chat-bubble chat-bubble-buyer" id="chat-3">
+          <div class="chat-name">Comprador</div>
+          Dale, me interesa. Cuándo puedo pasar?
+        </div>
+        <div class="chat-typing" id="chat-typing">
+          <div class="chat-typing-dot"></div>
+          <div class="chat-typing-dot"></div>
+          <div class="chat-typing-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCENE 4: Final (12-15s) ═══════════ -->
+    <div class="scene scene-final clip" data-start="12" data-duration="3" data-track-index="0">
+      <div class="final-badge" id="final-badge">
+        <span class="material-symbols-outlined">bolt</span>
+        Publicá en 2 minutos
+      </div>
+      <div class="final-logo-row" id="final-logo">
+        <div class="final-logo-icon">
+          <span class="material-symbols-outlined">storefront</span>
+        </div>
+        <div class="final-brand"><span class="b">Umpi</span></div>
+      </div>
+      <div class="final-url" id="final-url">umpi.com.ar</div>
+      <div class="final-cta" id="final-cta">Empezá gratis hoy</div>
+      <div class="final-footer" id="final-footer">Tu barrio digital · Tu comunidad</div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════
+       GSAP Timeline — Umpi Promo V2
+       ═══════════════════════════════════════════════════════ */
+
+    const tl = gsap.timeline({ paused: true });
+
+    // ── Generate particles ─────────────────────────────────
+    const particlesEl = document.getElementById('particles');
+    for (let i = 0; i < 30; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + '%';
+      p.style.width = (1 + Math.random() * 2) + 'px';
+      p.style.height = p.style.width;
+      particlesEl.appendChild(p);
+    }
+
+    // ── SCENE 1: Hero Word (0-3s) ──────────────────────────
+
+    // Split hero text into chars
+    const heroWord = document.getElementById('hero-word');
+    const heroText = heroWord.textContent;
+    heroWord.innerHTML = '';
+    [...heroText].forEach((char) => {
+      const span = document.createElement('span');
+      span.textContent = char === ' ' ? '\u00A0' : char;
+      span.className = 'char';
+      heroWord.appendChild(span);
+    });
+
+    gsap.set('.hero-word .char', { opacity: 0, y: 30, rotateX: -90 });
+    gsap.set('#hero-cursor', { opacity: 0 });
+    gsap.set('.hero-sub', { opacity: 0, y: 10 });
+
+    // Typewriter effect
+    tl.to('.hero-word .char', {
+      opacity: 1,
+      y: 0,
+      rotateX: 0,
+      duration: 0.05,
+      stagger: 0.06,
+      ease: 'back.out(2)',
+    }, 0.3);
+
+    // Cursor blink
+    tl.to('#hero-cursor', {
+      opacity: 1,
+      duration: 0.01,
+    }, 0.3);
+    tl.to('#hero-cursor', {
+      opacity: 0,
+      duration: 0.15,
+      yoyo: true,
+      repeat: 5,
+    }, 0.8);
+
+    // Subtitle
+    tl.to('.hero-sub', {
+      opacity: 1,
+      y: 0,
+      duration: 0.6,
+      ease: 'power2.out',
+    }, 1.5);
+
+    // Particles fade in
+    tl.to('.particle', {
+      opacity: () => 0.2 + Math.random() * 0.4,
+      duration: 0.5,
+      stagger: { each: 0.05, from: 'random' },
+    }, 0.5);
+
+    // Particles drift
+    tl.to('.particle', {
+      y: () => -50 - Math.random() * 100,
+      x: () => (Math.random() - 0.5) * 80,
+      duration: 3,
+      ease: 'sine.inOut',
+      stagger: { each: 0.05, from: 'random' },
+    }, 0.5);
+
+    // Scene 1 out
+    tl.to('.scene-hero', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 2.5);
+    tl.set('.scene-hero', { opacity: 0 }, 3.0);
+
+    // ── SCENE 2: Phone + Stats (3-8s) ──────────────────────
+
+    gsap.set('#phone', { y: 80, opacity: 0, scale: 0.9 });
+    gsap.set('.float-stat', { opacity: 0, x: -30 });
+
+    // Phone enters
+    tl.to('#phone', {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 1,
+      ease: 'back.out(1.2)',
+    }, 3.2);
+
+    // Price appears
+    tl.to('#phone-price', {
+      opacity: 1,
+      duration: 0.4,
+      ease: 'power2.out',
+    }, 4.0);
+
+    // Badge appears
+    tl.to('#img-badge', {
+      opacity: 1,
+      duration: 0.3,
+      ease: 'back.out(2)',
+    }, 4.2);
+
+    // Stats in phone
+    tl.to('#stat-views', { opacity: 1, duration: 0.3 }, 4.4);
+    tl.to('#stat-messages', { opacity: 1, duration: 0.3 }, 4.6);
+    tl.to('#stat-rating', { opacity: 1, duration: 0.3 }, 4.8);
+
+    // Floating stats enter from left
+    tl.to('#fs-views', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 4.5);
+    tl.to('#fs-messages', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 4.8);
+    tl.to('#fs-featured', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 5.1);
+    tl.to('#fs-rating', { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' }, 5.4);
+
+    // View counter ticks up
+    const viewNum = { val: 0 };
+    tl.to(viewNum, {
+      val: 247,
+      duration: 2,
+      ease: 'power1.inOut',
+      onUpdate: () => {
+        const v = Math.round(viewNum.val);
+        document.querySelector('#stat-views span:last-child').textContent = v;
+        document.querySelector('#fs-views .highlight-cyan').textContent = v;
+      },
+    }, 4.5);
+
+    // Scene 2 out
+    tl.to('.scene-phone', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 7.5);
+    tl.set('.scene-phone', { opacity: 0 }, 8.0);
+
+    // ── SCENE 3: Chat (8-12s) ──────────────────────────────
+
+    gsap.set('.chat-header', { opacity: 0, y: 15 });
+    gsap.set('.chat-bubble', { opacity: 0, y: 15, scale: 0.95 });
+    gsap.set('.chat-typing', { opacity: 0 });
+
+    // Header
+    tl.to('.chat-header', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power3.out',
+    }, 8.0);
+
+    // Bubbles stagger in
+    tl.to('#chat-1', {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.4,
+      ease: 'back.out(1.5)',
+    }, 8.4);
+
+    tl.to('#chat-2', {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.4,
+      ease: 'back.out(1.5)',
+    }, 9.0);
+
+    tl.to('#chat-3', {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.4,
+      ease: 'back.out(1.5)',
+    }, 9.6);
+
+    // Typing indicator
+    tl.to('#chat-typing', {
+      opacity: 1,
+      duration: 0.3,
+    }, 10.2);
+
+    // Typing dots animation
+    tl.to('.chat-typing-dot', {
+      y: -4,
+      duration: 0.3,
+      stagger: 0.15,
+      yoyo: true,
+      repeat: 2,
+      ease: 'sine.inOut',
+    }, 10.3);
+
+    // Scene 3 out
+    tl.to('.scene-chat', {
+      opacity: 0,
+      duration: 0.5,
+      ease: 'power2.in',
+    }, 11.5);
+    tl.set('.scene-chat', { opacity: 0 }, 12.0);
+
+    // ── SCENE 4: Final (12-15s) ────────────────────────────
+
+    gsap.set('#final-badge', { opacity: 0, y: 10 });
+    gsap.set('#final-logo', { opacity: 0, scale: 0.8 });
+    gsap.set('#final-url', { opacity: 0, y: 10 });
+    gsap.set('#final-cta', { opacity: 0, y: 20 });
+    gsap.set('#final-footer', { opacity: 0, y: 10 });
+
+    // Badge
+    tl.to('#final-badge', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power3.out',
+    }, 12.0);
+
+    // Logo
+    tl.to('#final-logo', {
+      opacity: 1,
+      scale: 1,
+      duration: 0.7,
+      ease: 'back.out(1.7)',
+    }, 12.2);
+
+    // URL
+    tl.to('#final-url', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power2.out',
+    }, 12.5);
+
+    // CTA
+    tl.to('#final-cta', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power3.out',
+    }, 12.8);
+
+    // Footer
+    tl.to('#final-footer', {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power2.out',
+    }, 13.0);
+
+    // Logo glow pulse
+    tl.to('.final-logo-icon', {
+      boxShadow: '0 0 60px rgba(255,107,53,0.5)',
+      duration: 1.5,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 1,
+    }, 13.0);
+
+    // ── Register timeline ──────────────────────────────────
+    window.__timelines = window.__timelines || {};
+    window.__timelines['umpi-promo-v2'] = tl;
+  </script>
+</body>
+</html>
