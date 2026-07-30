@@ -133,12 +133,6 @@ serve(async (req) => {
       .update({ status: 'cancelled' })
       .eq('id', activeSub.id)
 
-    // Unfeature all user's listings
-    await supabaseAdmin
-      .from('listings')
-      .update({ is_featured: false, listing_priority: 0 })
-      .eq('user_id', user.id)
-
     // Reset profile subscription
     await supabaseAdmin
       .from('profiles')
