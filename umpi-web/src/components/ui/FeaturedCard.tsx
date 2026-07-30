@@ -7,10 +7,14 @@ interface FeaturedCardProps {
 }
 
 export default function FeaturedCard({ listing }: FeaturedCardProps) {
+  const featuredBorder = listing.listing_priority >= 2
+    ? 'border-4 border-yellow-400/70 shadow-[0_0_12px_rgba(255,215,0,0.15)]'  // Premium: gold
+    : 'border-4 border-gray-400/50'  // Standard: gray
+
   return (
     <Link
       to={`/producto/${listing.id}`}
-      className="flex-none w-[280px] bg-surface rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] overflow-hidden group hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300"
+      className={`flex-none w-[280px] bg-surface rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] overflow-hidden group hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 ${featuredBorder}`}
     >
       <div className="relative h-[160px] w-full bg-surface-container-low">
         <img
