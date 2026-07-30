@@ -83,7 +83,7 @@ export default function Navbar() {
             <img
               src="/icon.png"
               alt="Umpi"
-              className="w-7 h-7"
+              className="w-10 h-10"
             />
             <span
               className="font-display-lg text-display-lg font-extrabold text-primary-container"
