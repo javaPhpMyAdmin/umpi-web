@@ -80,12 +80,11 @@ export default function Navbar() {
         {/* Brand */}
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-1.5">
-            <span
-              className="material-symbols-outlined text-[28px]"
-              style={{ color: '#FF6B35' }}
-            >
-              storefront
-            </span>
+            <img
+              src="/icon.png"
+              alt="Umpi"
+              className="w-7 h-7"
+            />
             <span
               className="font-display-lg text-display-lg font-extrabold text-primary-container"
               style={{ color: '#FF6B35' }}
