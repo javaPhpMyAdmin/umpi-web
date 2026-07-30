@@ -42,7 +42,11 @@ export default function AuthCallbackPage() {
         avatar_url: avatarUrl,
         // Fallback: set trial directly in case the DB trigger isn't created yet
         subscription_status: 'trial',
-        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        trial_ends_at: (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 30);
+          return d.toISOString();
+        })(),
       });
     }
   };
