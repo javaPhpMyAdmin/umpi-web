@@ -110,8 +110,7 @@ export default function EditPage() {
   const filteredCategories = useMemo(
     () =>
       categories
-        ?.filter((cat) => cat.name.includes('/'))
-        .map((cat) => ({ value: cat.id, label: cat.name })) || [],
+        ?.map((cat) => ({ value: cat.id, label: cat.name })) || [],
     [categories]
   )
 
