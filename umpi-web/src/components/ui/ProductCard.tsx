@@ -10,8 +10,8 @@ export default function ProductCard({ listing }: ProductCardProps) {
   // Border styling for featured listings
   const featuredBorder = listing.is_featured
     ? listing.listing_priority >= 2
-      ? 'border-2 border-yellow-400/70 shadow-[0_0_12px_rgba(255,215,0,0.15)]'  // Premium: gold
-      : 'border-2 border-gray-400/50'  // Standard: gray
+      ? 'border-4 border-yellow-400/70 shadow-[0_0_12px_rgba(255,215,0,0.15)]'  // Premium: gold
+      : 'border-4 border-gray-400/50'  // Standard: gray
     : 'border border-surface-variant/50'  // Not featured: default
 
   return (
