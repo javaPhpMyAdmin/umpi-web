@@ -89,9 +89,20 @@ export default function PlansPage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['auth'] });
-      setSyncResult('¡Suscripción sincronizada! Recargá la página.');
+      const mpStatus = data?.mp_status as string | undefined;
+      if (data?.synced && mpStatus === 'authorized') {
+        setSyncResult('¡Suscripción activa! Recargá la página.');
+      } else if (mpStatus === 'cancelled') {
+        setSyncResult('Tu suscripción está cancelada en Mercado Pago.');
+      } else if (mpStatus === 'expired') {
+        setSyncResult('Tu suscripción venció en Mercado Pago.');
+      } else {
+        setSyncResult(
+          'No encontramos una suscripción activa. Verificá que hayas completado el pago.',
+        );
+      }
     },
     onError: () => {
       setSyncResult(
