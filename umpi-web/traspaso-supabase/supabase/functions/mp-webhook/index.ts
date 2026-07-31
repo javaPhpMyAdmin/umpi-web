@@ -5,6 +5,65 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
+const textEncoder = new TextEncoder()
+
+function parseSignatureHeader(header: string | null): { ts: string; v1: string } | null {
+  if (!header) return null
+  let ts = ''
+  let v1 = ''
+  for (const part of header.split(',')) {
+    const [key, ...rest] = part.split('=')
+    const value = rest.join('=').trim()
+    if (key?.trim() === 'ts') ts = value
+    if (key?.trim() === 'v1') v1 = value
+  }
+  return ts && v1 ? { ts, v1 } : null
+}
+
+async function sha256HmacHex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(message))
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+// MP signs the manifest `id:{data.id};request-id:{x-request-id};ts:{ts};` with
+// HMAC-SHA256 using the webhook secret (sections with missing values are omitted).
+// data.id is taken from query params (IPN) with body fallback (Webhooks JSON),
+// and must be lowercased when alphanumeric (MP docs).
+async function isSignatureValid(
+  req: Request,
+  dataId: string | null,
+  body: Record<string, unknown>,
+): Promise<boolean> {
+  const secret = Deno.env.get('MP_WEBHOOK_SECRET')
+  if (!secret) return false
+
+  const parts = parseSignatureHeader(req.headers.get('x-signature'))
+  if (!parts) return false
+
+  const bodyDataId = (body as any).data?.id
+  const rawDataId = String(dataId || (typeof bodyDataId === 'string' ? bodyDataId : '') || '')
+  const manifestDataId = rawDataId.toLowerCase()
+  const requestId = req.headers.get('x-request-id') || ''
+
+  const sections: string[] = []
+  if (manifestDataId) sections.push(`id:${manifestDataId}`)
+  if (requestId) sections.push(`request-id:${requestId}`)
+  sections.push(`ts:${parts.ts}`)
+  const manifest = sections.join(';') + ';'
+
+  const expected = await sha256HmacHex(secret, manifest)
+  return expected === parts.v1.toLowerCase()
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -48,8 +107,42 @@ serve(async (req) => {
     let dataId: string | null = queryDataId || bodyDataId || bodyId
     let preapprovalId: string | null = null
 
+    // --- 2.5 Verify webhook signature (fail closed) ---
+    const webhookSecret = Deno.env.get('MP_WEBHOOK_SECRET')
+    if (!webhookSecret) {
+      console.error('mp-webhook: MP_WEBHOOK_SECRET not configured — refusing unsigned webhooks')
+      return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!(await isSignatureValid(req, dataId, body))) {
+      console.error('mp-webhook: invalid webhook signature — rejecting request')
+      return new Response(JSON.stringify({ error: 'Invalid webhook signature' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     if (!dataId) {
       console.log('mp-webhook: no event ID found in payload — acking anyway')
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // --- 3.25 Ack-and-ignore events we don't handle (payment, plan events, etc.) ---
+    // Prevents MP retry loops (MP retries every 15 min until 200/201).
+    const isHandledEvent =
+      eventType === 'subscription_authorized_payment' ||
+      (typeof eventType === 'string' &&
+        eventType.includes('preapproval') &&
+        !eventType.includes('plan'))
+
+    if (!isHandledEvent) {
+      console.log(`mp-webhook: ignoring unhandled event type=${eventType} id=${dataId}`)
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
