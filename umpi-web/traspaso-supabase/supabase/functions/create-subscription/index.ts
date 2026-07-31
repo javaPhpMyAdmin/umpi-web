@@ -146,7 +146,7 @@ serve(async (req) => {
       payer_email: payerEmail,
       external_reference: externalReference,
       back_url: backUrl,
-      notification_url: 'https://tvwtwnltgakbvgldiocb.supabase.co/functions/v1/mp-webhook',
+      notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
     }
 
     console.error('MP request body:', JSON.stringify(mpBody, null, 2))
