@@ -132,12 +132,23 @@ serve(async (req) => {
         .eq('id', subscription.plan_id)
         .single()
 
+      // MP test mode returns next_billing_date: null (or ''). Anchor to the
+      // subscription's existing expires_at so repeated user-invoked syncs in
+      // TEST can't slide the expiry window forward (rate limit is 5/60s);
+      // only a real MP event resets the period. Fall back to +30 days only
+      // when there is no prior expiry. The "30 days" backup period must stay
+      // aligned with subscription_plans.featured_duration_days (both plans
+      // are 30 today).
+      const nextBillingDate = preapproval.next_billing_date ||
+        subscription.expires_at ||
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
       // Update subscription
       await supabaseAdmin
         .from('subscriptions')
         .update({
           status: 'active',
-          expires_at: preapproval.next_billing_date,
+          expires_at: nextBillingDate,
         })
         .eq('id', subscription.id)
 
@@ -147,7 +158,7 @@ serve(async (req) => {
           .from('profiles')
           .update({
             subscription_type: plan.slug,
-            subscription_expires_at: preapproval.next_billing_date,
+            subscription_expires_at: nextBillingDate,
           })
           .eq('id', user.id)
       }

@@ -255,6 +255,16 @@ serve(async (req) => {
     const mpStatus: string = preapproval.status
 
     if (mpStatus === 'authorized') {
+      // MP test mode returns next_billing_date: null (or ''). Fall back to
+      // +30 days so expires_at / subscription_expires_at always carry a real
+      // expiry date and the expire_subscriptions cron can actually expire
+      // people. A webhook is a real MP event, so re-anchoring the period here
+      // is legitimate (unlike sync-subscription). The "30 days" backup period
+      // must stay aligned with subscription_plans.featured_duration_days
+      // (both plans are 30 today).
+      const nextBillingDate = preapproval.next_billing_date ||
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
       // Upsert subscription
       const { error: upsertError } = await supabaseAdmin
         .from('subscriptions')
@@ -265,7 +275,7 @@ serve(async (req) => {
           external_reference: externalReference,
           status: 'active',
           started_at: preapproval.date_created,
-          expires_at: preapproval.next_billing_date,
+          expires_at: nextBillingDate,
           featured_used: 0,
           period_start: new Date().toISOString(),
         }, { onConflict: 'mp_preapproval_id' })
@@ -291,7 +301,7 @@ serve(async (req) => {
           .from('profiles')
           .update({
             subscription_type: plan.slug,
-            subscription_expires_at: preapproval.next_billing_date,
+            subscription_expires_at: nextBillingDate,
           })
           .eq('id', userId)
       }
