@@ -182,6 +182,7 @@ serve(async (req) => {
         user_id: user.id,
         plan_id: planId,
         mp_preapproval_id: mpData.id,
+        external_reference: externalReference,
         status: 'pending',
         started_at: new Date().toISOString(),
       })
