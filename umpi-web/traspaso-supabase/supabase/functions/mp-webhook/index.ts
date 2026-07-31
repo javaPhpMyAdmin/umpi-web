@@ -37,28 +37,66 @@ serve(async (req) => {
     // --- 2. Log full payload for debugging ---
     console.log('mp-webhook received:', JSON.stringify({ headers: Object.fromEntries(req.headers.entries()), body }, null, 2))
 
-    // --- 3. Extract preapproval ID from any format ---
-    // Webhook JSON:  { action: "preapproval.updated", data: { id } }
-    // IPN form:      { topic: "preapproval", id }  or  { type: "preapproval", id }
-    // IPN query:     ?topic=preapproval&id=...
+    // --- 3. Extract event ID and type from query params (IPN) or body (Webhooks) ---
+    const url = new URL(req.url)
+    const queryType = url.searchParams.get('type') || url.searchParams.get('topic')
+    const queryDataId = url.searchParams.get('data.id') || url.searchParams.get('id')
+    const bodyDataId = (body as any).data?.id
+    const bodyId = (body as any).id
+    const eventType = (body as any).type || (body as any).action || queryType
+
+    let dataId: string | null = queryDataId || bodyDataId || bodyId
     let preapprovalId: string | null = null
 
-    // Format A: { action: "preapproval.updated", data: { id } }
-    if (!preapprovalId && (body as any).data?.id) {
-      preapprovalId = (body as any).data.id
+    if (!dataId) {
+      console.log('mp-webhook: no event ID found in payload — acking anyway')
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    // Format B: { topic: "preapproval", id } or { type: "preapproval", id }
-    if (!preapprovalId && (body as any).id) {
-      const topic = (body as any).topic || (body as any).type
-      if (topic === 'preapproval') {
-        preapprovalId = (body as any).id
+    // --- 3.5 Resolve the preapproval ID from the event ---
+    // subscription_authorized_payment: data.id is the AUTHORIZED PAYMENT (invoice) id,
+    // NOT the preapproval id. Fetch the invoice to get preapproval_id + external_reference.
+    // subscription_preapproval / preapproval.*: data.id IS the preapproval id.
+    if (eventType === 'subscription_authorized_payment') {
+      const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN')
+      if (!mpAccessToken) {
+        return new Response(JSON.stringify({ error: 'MP_ACCESS_TOKEN not configured' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-    }
 
-    // Format C: { id } as bare preapproval ID
-    if (!preapprovalId && (body as any).id) {
-      preapprovalId = (body as any).id
+      const invoiceResponse = await fetch(
+        `https://api.mercadopago.com/authorized_payments/${dataId}`,
+        {
+          headers: { Authorization: `Bearer ${mpAccessToken}` },
+        },
+      )
+
+      if (!invoiceResponse.ok) {
+        const mpError = await invoiceResponse.text()
+        console.error('Failed to fetch invoice from MP:', mpError)
+        return new Response(JSON.stringify({ error: 'Failed to fetch invoice from MP' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const invoice = await invoiceResponse.json()
+      preapprovalId = invoice.preapproval_id || null
+      if (!preapprovalId) {
+        console.error('Invoice has no preapproval_id:', JSON.stringify(invoice))
+        return new Response(JSON.stringify({ error: 'Invoice has no preapproval_id' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      console.log(`mp-webhook: resolved invoice ${dataId} -> preapproval ${preapprovalId}`)
+    } else {
+      preapprovalId = dataId
     }
 
     if (!preapprovalId) {
