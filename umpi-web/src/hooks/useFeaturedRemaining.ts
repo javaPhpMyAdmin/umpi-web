@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { isInTrial } from '../lib/subscription'
 
 export interface FeaturedRemaining {
   remaining: number
@@ -8,13 +9,43 @@ export interface FeaturedRemaining {
   activeFeatured: number
 }
 
+// Mirrors the trial branch of the feature_listing RPC (v_max_featured := 10).
+// Trial users are NOT in the subscriptions table; their counter lives on the
+// profile (trial_featured_used, written by the RPC).
+const TRIAL_MAX_FEATURED = 10
+
 export function useFeaturedRemaining(planSlug: string | null | undefined) {
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
+  const inTrial = isInTrial(profile)
 
   return useQuery<FeaturedRemaining>({
-    queryKey: ['featured-remaining', session?.user?.id, planSlug],
+    // trial_featured_used in the key: after feature_listing bumps the counter
+    // server-side and the profile refetches, the key changes and the query
+    // re-runs with a fresh profile instead of serving the stale cached value.
+    queryKey: [
+      'featured-remaining',
+      session?.user?.id,
+      planSlug,
+      inTrial ? profile?.trial_featured_used ?? 0 : null,
+    ],
     queryFn: async () => {
-      if (!session?.user?.id || !planSlug) {
+      if (!session?.user?.id) {
+        return { remaining: 0, maxFeatured: 0, activeFeatured: 0 }
+      }
+
+      // Trial branch first — it wins over any paid plan, exactly like the
+      // feature_listing RPC (trial check happens before the subscription
+      // lookup).
+      if (inTrial) {
+        const activeFeatured = profile?.trial_featured_used ?? 0
+        return {
+          remaining: Math.max(0, TRIAL_MAX_FEATURED - activeFeatured),
+          maxFeatured: TRIAL_MAX_FEATURED,
+          activeFeatured,
+        }
+      }
+
+      if (!planSlug) {
         return { remaining: 0, maxFeatured: 0, activeFeatured: 0 }
       }
 
@@ -58,7 +89,7 @@ export function useFeaturedRemaining(planSlug: string | null | undefined) {
         activeFeatured,
       }
     },
-    enabled: !!session?.user?.id && !!planSlug,
+    enabled: !!session?.user?.id && (inTrial || !!planSlug),
     staleTime: 30_000,
   })
 }

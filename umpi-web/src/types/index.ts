@@ -51,6 +51,8 @@ export interface Profile {
   subscription_expires_at: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+  /** Featured listings granted by the trial (max 10, enforced by feature_listing RPC) */
+  trial_featured_used: number
   location: string | null
   is_admin: boolean
   created_at: string

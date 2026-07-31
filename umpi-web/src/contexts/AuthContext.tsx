@@ -191,27 +191,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
       if (error) throw error;
 
-      // Crear perfil (will be handled by DB trigger in production,
-      // but kept here as fallback for backward compatibility)
-      if (data.user) {
-        const avatarUrl =
-          (data.user.user_metadata?.avatar_url as string | undefined) || null;
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: data.user.id,
-          full_name: fullName,
-          avatar_url: avatarUrl,
-          subscription_status: 'trial',
-          trial_ends_at: (() => {
-            const d = new Date();
-            d.setDate(d.getDate() + 30);
-            return d.toISOString();
-          })(),
-        });
-
-        // Ignore duplicate key error (trigger already created the profile)
-        if (profileError && profileError.code !== '23505') throw profileError;
-      }
-
+      // Profile creation is handled by the handle_new_user DB trigger
+      // (AFTER INSERT on auth.users). The client is NOT allowed to insert
+      // into profiles anymore (RLS) — fullName travels via user metadata
+      // and the trigger persists it together with the trial assignment.
       return data;
     },
     onSuccess: () => {
@@ -241,7 +224,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // ── Magic Link mutation ──────────────────────────────────────────────────
   // Sends a one-time password link via email. Works for both new and existing users.
-  // Stores pending profile name in localStorage for profile creation after auth.
+  // For new users the name travels via signUp user metadata; the
+  // handle_new_user trigger creates the profile — nothing is stored
+  // client-side anymore.
   const sendMagicLinkMutation = useMutation({
     mutationFn: async ({
       email,
@@ -250,14 +235,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       email: string;
       fullName?: string;
     }) => {
-      // Store name so ConfirmEmailPage can create the profile after auth
-      if (fullName) localStorage.setItem('pending_profile_name', fullName);
-
       // Try signInWithOtp first (works for existing users)
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/confirmar-email`,
+          data: { full_name: fullName },
         },
       });
 
@@ -287,6 +270,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             email,
             options: {
               emailRedirectTo: `${window.location.origin}/confirmar-email`,
+              data: { full_name: fullName },
             },
           });
           if (otpError) throw otpError;

@@ -288,22 +288,46 @@ serve(async (req) => {
         })
       }
 
-      // Fetch plan slug for profile update
-      const { data: plan } = await supabaseAdmin
+      // Fetch plan slug for profile update. If the plan cannot be resolved,
+      // DO NOT ack: the profile would stay 'trial' while the subscription is
+      // active — the trial branch of feature_listing would win and the user
+      // would keep trial benefits with the trial never consumed. Returning
+      // 500 makes MP retry the event (idempotent upsert on retry).
+      const { data: plan, error: planError } = await supabaseAdmin
         .from('subscription_plans')
         .select('slug')
         .eq('id', planId)
         .single()
 
+      if (planError || !plan?.slug) {
+        console.error('Failed to resolve plan on authorize:', planError ?? `plan ${planId} not found`)
+        return new Response(JSON.stringify({ error: 'Plan not found for subscription' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       // Update profile (no listings touched — toggle + RPC handle featuring)
-      if (plan?.slug) {
-        await supabaseAdmin
-          .from('profiles')
-          .update({
-            subscription_type: plan.slug,
-            subscription_expires_at: nextBillingDate,
-          })
-          .eq('id', userId)
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          subscription_type: plan.slug,
+          subscription_expires_at: nextBillingDate,
+          // W2: purchasing consumes the trial — a later cancel/expire
+          // (subscription_type -> 'none') must NOT re-grant trial benefits.
+          subscription_status: 'paid',
+          trial_ends_at: null,
+        })
+        .eq('id', userId)
+
+      if (profileError) {
+        // Do NOT ack the webhook: MP retries the event, and the retry
+        // re-runs the idempotent upsert + profile update.
+        console.error('Failed to update profile on authorize:', profileError)
+        return new Response(JSON.stringify({ error: 'Database error during profile update' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
 
       console.log(`Subscription authorized: user=${userId} plan=${planId} mp_id=${preapprovalId}`)

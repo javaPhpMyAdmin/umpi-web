@@ -125,12 +125,26 @@ serve(async (req) => {
     let dbStatusChanged = false
 
     if (mpStatus === 'authorized') {
-      // Fetch plan to get slug
-      const { data: plan } = await supabaseAdmin
+      // Fetch plan to get slug. If the plan cannot be resolved, fail: the
+      // profile would stay 'trial' while the subscription is active — the
+      // trial branch of feature_listing would win and the user would keep
+      // trial benefits with the trial never consumed.
+      const { data: plan, error: planError } = await supabaseAdmin
         .from('subscription_plans')
         .select('slug, listing_priority')
         .eq('id', subscription.plan_id)
         .single()
+
+      if (planError || !plan?.slug) {
+        console.error('Failed to resolve plan on sync:', planError ?? `plan ${subscription.plan_id} not found`)
+        return new Response(
+          JSON.stringify({ error: 'Plan not found for subscription' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
 
       // MP test mode returns next_billing_date: null (or ''). Anchor to the
       // subscription's existing expires_at so repeated user-invoked syncs in
@@ -152,19 +166,34 @@ serve(async (req) => {
         })
         .eq('id', subscription.id)
 
-      // Update profile
-      if (plan?.slug) {
-        await supabaseAdmin
-          .from('profiles')
-          .update({
-            subscription_type: plan.slug,
-            subscription_expires_at: nextBillingDate,
-          })
-          .eq('id', user.id)
+      // Update profile (plan resolved above — required, not optional)
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          subscription_type: plan.slug,
+          subscription_expires_at: nextBillingDate,
+          // W2: purchasing consumes the trial — a later cancel/expire
+          // (subscription_type -> 'none') must NOT re-grant trial benefits.
+          subscription_status: 'paid',
+          trial_ends_at: null,
+        })
+        .eq('id', user.id)
+
+      if (profileError) {
+        // The client surfaces this error and the profile keeps its previous
+        // state (e.g. still 'trial') — the user can retry the sync.
+        console.error('Failed to update profile on sync:', profileError)
+        return new Response(
+          JSON.stringify({ error: 'Database error during profile update' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
       }
 
       // Feature listings
-      const priority = plan?.listing_priority ?? 1
+      const priority = plan.listing_priority ?? 1
       await supabaseAdmin
         .from('listings')
         .update({ is_featured: true, listing_priority: priority })

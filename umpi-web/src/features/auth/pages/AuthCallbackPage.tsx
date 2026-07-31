@@ -4,8 +4,10 @@ import { supabase } from '../../../lib/supabase';
 
 /**
  * AuthCallbackPage — handles Google OAuth + Magic Link callbacks.
- * After session is established, ensures a profile exists in `profiles`
- * (important for Google users who don't go through registerMutation).
+ * After session is established, waits for the handle_new_user DB trigger
+ * to create the profile row (Google users). Clients can no longer insert
+ * into `profiles` — RLS blocks it; the trigger fires synchronously on the
+ * auth.users insert, so the row is normally already there.
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -15,39 +17,19 @@ export default function AuthCallbackPage() {
   // CANDADO: Evita que React ejecute la función dos veces seguidas
   const isProcessing = useRef(false);
 
-  // Ensures profile exists after OAuth login (Google users need this)
+  // Waits for the handle_new_user DB trigger to create the profile row.
+  // The client must NOT insert/upsert profiles anymore (RLS blocks it).
+  // Retries briefly as a safety net for replication/trigger lag.
   const ensureProfile = async (userId: string) => {
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (!existing) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split('@')[0] ||
-        'Usuario';
-      const avatarUrl = user.user_metadata?.avatar_url || null;
-
-      await supabase.from('profiles').upsert({
-        id: userId,
-        full_name: fullName,
-        avatar_url: avatarUrl,
-        // Fallback: set trial directly in case the DB trigger isn't created yet
-        subscription_status: 'trial',
-        trial_ends_at: (() => {
-          const d = new Date();
-          d.setDate(d.getDate() + 30);
-          return d.toISOString();
-        })(),
-      });
+      if (existing) return;
+      await new Promise((resolve) => setTimeout(resolve, 400));
     }
   };
 
@@ -75,7 +57,7 @@ export default function AuthCallbackPage() {
             setError(error.message);
             return;
           }
-          // Ensure profile exists (handles Google OAuth new users)
+          // Wait for trigger-created profile (handles Google OAuth new users)
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) await ensureProfile(session.user.id);
           navigate('/');
@@ -99,7 +81,7 @@ export default function AuthCallbackPage() {
             setError(error.message);
             return;
           }
-          // Ensure profile exists (handles Google OAuth new users)
+          // Wait for trigger-created profile (handles Google OAuth new users)
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) await ensureProfile(session.user.id);
           navigate('/');

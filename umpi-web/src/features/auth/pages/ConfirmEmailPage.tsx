@@ -14,7 +14,7 @@ import { supabase } from '../../../lib/supabase'
  *
  * This page:
  * 1. Waits for the session to be available
- * 2. Creates the profile if it doesn't exist (new user)
+ * 2. Waits for the handle_new_user DB trigger to create the profile (new user)
  * 3. Redirects to home
  */
 export default function ConfirmEmailPage() {
@@ -28,40 +28,18 @@ export default function ConfirmEmailPage() {
 
     const ensureProfile = async () => {
       try {
-        // Check if profile already exists
-        const { data: existing } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', session.user!.id)
-          .single()
-
-        if (!existing) {
-          // New user — create profile from stored name or metadata
-          const pendingName = localStorage.getItem('pending_profile_name')
-          const fullName = pendingName
-            || (session.user!.user_metadata?.full_name as string)
-            || session.user!.email?.split('@')[0]
-            || 'Usuario'
-
-          const { error: insertError } = await supabase
+        // The handle_new_user trigger (AFTER INSERT on auth.users) creates
+        // the profile on signup; the client is not allowed to insert into
+        // profiles anymore (RLS). Wait briefly for the row to appear.
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const { data: existing } = await supabase
             .from('profiles')
-            .insert({
-              id: session.user!.id,
-              full_name: fullName,
-              subscription_status: 'trial',
-              trial_ends_at: (() => {
-                const d = new Date();
-                d.setDate(d.getDate() + 30);
-                return d.toISOString();
-              })(),
-            })
+            .select('id')
+            .eq('id', session.user!.id)
+            .maybeSingle()
 
-          if (insertError && insertError.code !== '23505') {
-            // 23505 = duplicate key (profile already exists, race condition)
-            console.error('Error creating profile:', insertError)
-          }
-
-          localStorage.removeItem('pending_profile_name')
+          if (existing) break
+          await new Promise((resolve) => setTimeout(resolve, 400))
         }
 
         setStatus('success')

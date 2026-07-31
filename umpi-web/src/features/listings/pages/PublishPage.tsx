@@ -229,6 +229,10 @@ export default function PublishPage() {
 
         // Refresh featured remaining count
         queryClient.invalidateQueries({ queryKey: ['featured-remaining'] })
+
+        // Trial users' counter lives on the profile (trial_featured_used);
+        // refetch it so useFeaturedRemaining recomputes from fresh data.
+        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] })
       }
 
       navigate('/perfil')
