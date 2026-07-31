@@ -13,6 +13,13 @@ export interface ListingsFilters {
 
 const PAGE_SIZE = 24
 
+// Explicit projection for listing cards (ProductCard / FeaturedCard / profile cards).
+// Omits `description` and the GENERATED `search_vector` tsvector column
+// (title + description; only used for search ranking) which dominate the payload
+// size. `listing_priority`, `created_at` and `id` are required by cursor pagination.
+export const LISTING_CARD_COLUMNS =
+  'id, title, price, price_type, images, location, condition, is_featured, listing_priority, featured_until, created_at, user_id, rating, reviews_count, category_id, city_id, status'
+
 // Type for each page from Supabase range query
 interface ListingsPage {
   items: Listing[]
@@ -28,7 +35,7 @@ interface ListingsCursor {
 function buildBaseQuery(filters: ListingsFilters) {
   let query = supabase
     .from('listings')
-    .select('*')
+    .select(LISTING_CARD_COLUMNS)
     .eq('status', 'active')
 
   if (filters.categoryId) {
@@ -71,11 +78,13 @@ export function useListings(filters: ListingsFilters = {}) {
     queryKey: ['listings', 'infinite', filters],
     queryFn: async ({ pageParam }) => {
       if (isSearchMode) {
-        // RPC: full-text search via GIN index + ts_rank
+        // RPC: full-text search via GIN index + ts_rank.
+        // search_listings_cards (20260730000006) returns the card projection —
+        // no description / category jsonb blobs — matching LISTING_CARD_COLUMNS.
         const cursor = pageParam ? JSON.parse(pageParam as string) as ListingsCursor : null
         const offset = cursor ? parseInt(cursor.id, 10) || 0 : 0 // id field repurposed as offset for search mode
 
-        const { data, error } = await supabase.rpc('search_listings', {
+        const { data, error } = await supabase.rpc('search_listings_cards', {
           p_query: filters.search!,
           p_category_id: filters.categoryId ?? null,
           p_price_min: filters.priceMin ?? null,
@@ -154,7 +163,7 @@ export function useFeaturedListingsAllInfinite() {
     queryFn: async ({ pageParam }) => {
       let query = supabase
         .from('listings')
-        .select('*')
+        .select(LISTING_CARD_COLUMNS)
         .eq('status', 'active')
         .eq('is_featured', true)
         .order('listing_priority', { ascending: false })
@@ -203,7 +212,7 @@ export function useFeaturedListings(limit = 6) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('*')
+        .select(LISTING_CARD_COLUMNS)
         .eq('status', 'active')
         .eq('is_featured', true)
         .order('listing_priority', { ascending: false })
@@ -223,7 +232,7 @@ export function useRecentListings(limit = 10) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('*')
+        .select(LISTING_CARD_COLUMNS)
         .eq('status', 'active')
         .eq('is_featured', false)
         .order('created_at', { ascending: false })

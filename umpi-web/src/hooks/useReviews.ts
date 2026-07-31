@@ -10,9 +10,10 @@ export function useReviews(listingId: string | undefined) {
       if (!listingId) return []
       const { data, error } = await supabase
         .from('reviews')
-        .select('*, reviewer:reviewer_id(*)')
+        .select('*, reviewer:reviewer_id(id, full_name, avatar_url)')
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false })
+        .limit(200) // Cap: consumers (ProductDetailPage, ReviewForm) render all reviews, no pagination
 
       if (error) throw error
       return (data as Review[]) || []

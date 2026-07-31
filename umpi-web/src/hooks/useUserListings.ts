@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Listing } from '../types'
+import { LISTING_CARD_COLUMNS } from './useListings'
 
 export const PAGE_SIZE = 24
 
@@ -23,7 +24,7 @@ export function useUserListings(userId: string) {
     queryFn: async ({ pageParam }) => {
       let query = supabase
         .from('listings')
-        .select('*')
+        .select(LISTING_CARD_COLUMNS)
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('listing_priority', { ascending: false })

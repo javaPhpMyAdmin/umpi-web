@@ -18,6 +18,26 @@ const CONV_PAGE_SIZE = 30
 
 function useConversations() {
   const { session } = useAuth()
+  const queryClient = useQueryClient()
+
+  // Snapshot of the last FETCHED `last_message_at` per conversation, updated
+  // ONLY at fetch time. The poll gate compares the fresh fetch against this
+  // ref — never against the React Query cache, which useRealtimeReadReceipts
+  // mutates with realtime UPDATE events between polls (a cache diff always
+  // comes back equal, so the gate never fires for the open conversation and
+  // previews stay stale). `last_message_at` is server-enforced by the DB
+  // trigger (migration 20260730000004), so this ref is the source of truth
+  // for "what did we last fetch".
+  const lastActivityRef = useRef<Map<string, string | null>>(new Map())
+
+  // Reset the snapshot when the signed-in user changes while this component
+  // stays mounted (logout → login as another user). Without this, a shared
+  // conversation whose last_message_at matches the previous user's snapshot
+  // would permanently skip the preview fetch for the new user.
+  const userId = session?.user?.id
+  useEffect(() => {
+    lastActivityRef.current = new Map()
+  }, [userId])
 
   return useInfiniteQuery({
     queryKey: ['conversations'],
@@ -57,6 +77,23 @@ function useConversations() {
       const listingIds = items.filter((c) => c.listing_id).map((c) => c.listing_id)
       const convIds = items.map((c) => c.id)
 
+      // Only batch-fetch the last messages when a conversation shows new
+      // activity since the previous poll (last_message_at changed). This list
+      // is polled every 15s; without the guard we'd pull up to 100 message
+      // rows on every tick even when nothing changed.
+      const hasNewActivity = items.some(
+        (c) => (lastActivityRef.current.get(c.id) ?? null) !== (c.last_message_at ?? null)
+      )
+
+      const lastMessagesPromise = hasNewActivity && convIds.length > 0
+        ? supabase
+            .from('messages')
+            .select('*')
+            .in('conversation_id', convIds)
+            .order('created_at', { ascending: false })
+            .limit(100)
+        : Promise.resolve({ data: [], error: null })
+
       const [profilesRes, listingsRes, lastMessagesRes] = await Promise.all([
         userIds.length > 0
           ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
@@ -64,14 +101,7 @@ function useConversations() {
         listingIds.length > 0
           ? supabase.from('listings').select('id, title, price, images').in('id', listingIds)
           : { data: [], error: null },
-        convIds.length > 0
-          ? supabase
-              .from('messages')
-              .select('*')
-              .in('conversation_id', convIds)
-              .order('created_at', { ascending: false })
-              .limit(100)
-          : { data: [], error: null },
+        lastMessagesPromise,
       ])
 
       const profilesMap = new Map((profilesRes.data || []).map((p) => [p.id, p]))
@@ -81,6 +111,36 @@ function useConversations() {
       for (const msg of (lastMessagesRes.data || []) as Message[]) {
         if (!lastMsgByConv.has(msg.conversation_id)) {
           lastMsgByConv.set(msg.conversation_id, msg)
+        }
+      }
+
+      // Keep previously-cached previews for conversations we didn't re-fetch,
+      // so idle conversations don't lose their last_message on poll. This runs
+      // unconditionally: the inner `!lastMsgByConv.has(conv.id)` guard already
+      // prevents overriding a fresh preview with an older cached one. (The old
+      // outer `!hasNewActivity` guard defeated preview survival whenever ANY
+      // conversation in the page had new activity, even though the batch
+      // fetch is capped at 100 rows and may not include every conversation's
+      // latest message.)
+      const prevPages = queryClient.getQueryData<{ pages: { items: Conversation[] }[] }>(['conversations'])
+      for (const page of prevPages?.pages ?? []) {
+        for (const conv of page.items) {
+          if (conv.last_message && !lastMsgByConv.has(conv.id)) {
+            lastMsgByConv.set(conv.id, conv.last_message)
+          }
+        }
+      }
+
+      // Snapshot the freshly-fetched last_message_at values for the next poll
+      // (updated only here, at fetch time — never from realtime-mutated cache).
+      // Only advance when the messages batch succeeded: if it failed
+      // transiently (per-request PostgREST error), keeping the OLD snapshot
+      // means the next poll still sees a diff and retries the batch. Advancing
+      // on a failed batch would skip the fetch until the next message arrives
+      // and the new preview would never render.
+      if (!lastMessagesRes.error) {
+        for (const c of items) {
+          lastActivityRef.current.set(c.id, c.last_message_at ?? null)
         }
       }
 

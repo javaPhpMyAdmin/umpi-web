@@ -26,6 +26,22 @@ interface RateLimitResult {
  * - If under the limit → allow and increment counter
  * - If over the limit → deny and tell them when to retry
  *
+ * Implementation: ONE atomic round trip to the `bump_rate_limit` RPC
+ * (supabase/migrations/20260730000003_rate_limit_rpc_and_policy.sql). The RPC
+ * inserts-or-increments the counter with INSERT ... ON CONFLICT on the
+ * (user_id, function_name, window_start) unique constraint and returns the
+ * POST-increment count. There is no read-modify-write race anymore, so the old
+ * compare-and-swap retry loop is gone and contention errors can't happen.
+ *
+ * Deny semantics are preserved from the previous limiter, which denied BEFORE
+ * incrementing (the request that would take the count past maxRequests was
+ * refused). The RPC returns the post-increment count, so an allowed request is
+ * one where the new count stays <= maxRequests, and the request that raises
+ * the count to maxRequests + 1 is denied (count > maxRequests).
+ *
+ * Note: the RPC window is a fixed calendar minute (date_trunc('minute',
+ * now())), so windowSeconds must be 60 — all current callers use 60.
+ *
  * @param userId - The authenticated user's ID
  * @param config - Rate limit configuration
  * @returns RateLimitResult with allowed flag and metadata
@@ -36,27 +52,28 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const { functionName, maxRequests, windowSeconds } = config
 
-  // Calculate the start of the current window
-  // Example: if windowSeconds = 60, and it's 14:35:22,
-  // windowStart = 14:35:00 (rounded down to the nearest minute)
+  // Calculate the start of the current window (minute-aligned, matching
+  // date_trunc('minute', now()) inside bump_rate_limit). Used to compute
+  // retryAfterSeconds for denied requests.
   const now = new Date()
   const windowStart = new Date(
     Math.floor(now.getTime() / (windowSeconds * 1000)) * (windowSeconds * 1000)
   )
 
-  // Try to get existing record for this user + function + window
-  const { data: existing } = await supabaseAdmin
-    .from('rate_limits')
-    .select('request_count')
-    .eq('user_id', userId)
-    .eq('function_name', functionName)
-    .eq('window_start', windowStart.toISOString())
-    .single()
+  // Atomic increment + read in one round trip: the RPC bumps the counter and
+  // returns the new value, so no SELECT-then-UPDATE race is possible.
+  const { data: count, error } = await supabaseAdmin.rpc('bump_rate_limit', {
+    p_user_id: userId,
+    p_function_name: functionName,
+  })
+  if (error) throw error
 
-  const currentCount = existing?.request_count ?? 0
+  const requestCount = Number(count)
 
-  // Check if limit exceeded
-  if (currentCount >= maxRequests) {
+  // Deny when the post-increment count exceeds the limit. (The denied request
+  // itself was already counted by the RPC; the practical effect — a user over
+  // the limit stays blocked until the window rolls over — is unchanged.)
+  if (requestCount > maxRequests) {
     // Calculate when the next window starts
     const nextWindow = new Date(windowStart.getTime() + windowSeconds * 1000)
     const retryAfterSeconds = Math.ceil((nextWindow.getTime() - now.getTime()) / 1000)
@@ -68,28 +85,9 @@ export async function checkRateLimit(
     }
   }
 
-  // Increment counter (upsert: create or increment)
-  if (existing) {
-    await supabaseAdmin
-      .from('rate_limits')
-      .update({ request_count: currentCount + 1 })
-      .eq('user_id', userId)
-      .eq('function_name', functionName)
-      .eq('window_start', windowStart.toISOString())
-  } else {
-    await supabaseAdmin
-      .from('rate_limits')
-      .insert({
-        user_id: userId,
-        function_name: functionName,
-        window_start: windowStart.toISOString(),
-        request_count: 1,
-      })
-  }
-
   return {
     allowed: true,
-    remaining: maxRequests - currentCount - 1,
+    remaining: maxRequests - requestCount,
     retryAfterSeconds: 0,
   }
 }
