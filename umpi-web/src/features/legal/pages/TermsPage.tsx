@@ -180,15 +180,12 @@ export default function TermsPage() {
         </p>
       </section>
 
-      {/* Section 12 (Legislación aplicable) body is pending client text —
-          do not invent legal copy. Neutral placeholder until the client
-          delivers the section text. */}
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
           Legislación aplicable
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Sección pendiente de actualización.
+          Estos términos se regirán por las leyes de la República Argentina.
         </p>
       </section>
     </LegalPageLayout>
