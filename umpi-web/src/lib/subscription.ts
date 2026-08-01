@@ -67,18 +67,20 @@ type PlanSlug = 'premium' | 'estandar' | 'none'
 
 /**
  * Returns the effective plan slug for feature calculations.
- * Trial is treated as premium. Falls back to the user's actual paid plan.
+ * Paid plan wins over trial — mirrors the server-side guard (20260801000004)
+ * and feature_listing, so the UI never promises more than the server enforces.
+ * Falls back to the user's actual paid plan, then trial → premium, then none.
  */
 export function getEffectivePlan(profile: Profile | null | undefined): PlanSlug {
   if (!profile) return 'none'
 
-  // Trial → behaves as premium
-  if (isInTrial(profile)) return 'premium'
-
-  // Paid plan
+  // Paid plan (active subscription wins even if the profile still says trial)
   if (hasPaidPlan(profile)) {
     return (profile.subscription_type as PlanSlug) || 'none'
   }
+
+  // Trial → behaves as premium
+  if (isInTrial(profile)) return 'premium'
 
   return 'none'
 }
