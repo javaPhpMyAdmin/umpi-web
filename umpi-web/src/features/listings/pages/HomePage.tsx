@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useCategories } from '../../../hooks/useCategories'
 import { useFeaturedListings, useRecentListings } from '../../../hooks/useListings'
@@ -15,6 +16,20 @@ const iconMap: Record<string, string> = {
   UtensilsCrossed: 'restaurant',
   Smartphone: 'smartphone',
   Store: 'store',
+}
+
+// Category tile colors keyed by slug (more stable than icon). Every color
+// keeps >= 4.5:1 contrast both for white icons on the fill and for the 12px
+// label on the light page background (#f8f9fa), so each hex does double duty.
+// Kept outside the map so the lookup never hits Object.prototype keys.
+const FALLBACK_CATEGORY_COLOR = '#5A6A80' // neutral blue-gray for future categories
+
+const CATEGORY_COLORS: Record<string, string> = {
+  'autos-motos': '#CC2E1B', // vivid red — motors
+  'celulares-accesorios': '#1B62CC', // electric blue — tech
+  'inmuebles': '#047A4E', // emerald green — property
+  'resto-bares-cafeterias': '#8C3FF3', // violet — food & nightlife
+  'servicios-comercios': '#0A7A7A', // teal — services
 }
 
 export default function HomePage() {
@@ -69,48 +84,41 @@ export default function HomePage() {
             Explorar Categorías
           </h2>
           {loadingCategories ? (
-            <div className="flex gap-sm md:gap-md">
+            <div className="flex gap-lg md:gap-xl">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 min-w-[80px]">
+                <div key={i} className="flex flex-col items-center gap-2 min-w-[96px]">
                   <div className="w-16 h-16 rounded-[14px] bg-surface-container-low animate-pulse" />
-                  <div className="h-3 w-12 bg-surface-container-low rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-surface-container-low rounded animate-pulse" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex overflow-x-auto no-scrollbar gap-sm md:gap-md pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
-              {categories?.map((cat, index) => (
-                <Link
-                  key={cat.id}
-                  to={`/explorar?categoria=${cat.slug}`}
-                  className="flex flex-col items-center gap-2 min-w-[80px] max-w-[80px] group active:scale-95 transition-transform"
-                >
-                  <div
-                    className={`w-16 h-16 rounded-[14px] flex items-center justify-center transition-colors ${
-                      index === 0
-                        ? 'bg-primary-container shadow-[0_4px_12px_rgba(255,107,53,0.2)]'
-                        : 'bg-surface border border-border-light group-hover:border-primary-container'
-                    }`}
+            <div className="flex overflow-x-auto no-scrollbar gap-lg md:gap-xl pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+              {categories?.map((cat) => {
+                const color = CATEGORY_COLORS[cat.slug] ?? FALLBACK_CATEGORY_COLOR
+                return (
+                  <Link
+                    key={cat.id}
+                    to={`/explorar?categoria=${cat.slug}`}
+                    style={{ '--cat-color': color } as CSSProperties}
+                    className="flex flex-col items-center gap-2 min-w-[96px] group active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-[var(--cat-color)]"
                   >
-                    <span
-                      className={`material-symbols-outlined text-[32px] ${
-                        index === 0
-                          ? 'text-white material-symbols-filled'
-                          : 'text-text-secondary group-hover:text-primary-container'
-                      }`}
-                    >
-                      {iconMap[cat.icon] || 'category'}
+                    {/* Note: in Tailwind arbitrary values, underscores are the space
+                        escape (in_srgb → in srgb). Keep them or the shadow silently vanishes. */}
+                    <div className="w-16 h-16 rounded-[14px] flex items-center justify-center bg-[var(--cat-color)] shadow-[0_4px_12px_color-mix(in_srgb,var(--cat-color)_25%,transparent)] transition-shadow duration-150 hover:shadow-[0_6px_16px_color-mix(in_srgb,var(--cat-color)_40%,transparent)]">
+                      <span className="material-symbols-outlined material-symbols-filled text-white text-[32px]">
+                        {iconMap[cat.icon] || 'category'}
+                      </span>
+                    </div>
+                    {/* One line per category: the label uses whitespace-nowrap and the
+                        tile grows with its text, so long names stay fully readable
+                        (client requirement). Tiles intentionally vary in width. */}
+                    <span className="block w-full font-label-bold text-label-bold text-center leading-tight whitespace-nowrap text-[var(--cat-color)]">
+                      {cat.name}
                     </span>
-                  </div>
-                  <span
-                    className={`font-label-bold text-label-bold text-center leading-tight ${
-                      index === 0 ? 'text-on-surface' : 'text-text-secondary'
-                    }`}
-                  >
-                    <span className="block truncate max-w-[76px]">{cat.name}</span>
-                  </span>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           )}
         </section>
