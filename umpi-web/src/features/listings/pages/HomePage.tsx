@@ -86,7 +86,7 @@ export default function HomePage() {
           {loadingCategories ? (
             <div className="flex gap-lg md:gap-xl">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 min-w-[96px]">
+                <div key={i} className="flex flex-col items-center gap-2 min-w-[96px] shrink-0">
                   <div className="w-16 h-16 rounded-[14px] bg-surface-container-low animate-pulse" />
                   <div className="h-3 w-20 bg-surface-container-low rounded animate-pulse" />
                 </div>
@@ -101,7 +101,7 @@ export default function HomePage() {
                     key={cat.id}
                     to={`/explorar?categoria=${cat.slug}`}
                     style={{ '--cat-color': color } as CSSProperties}
-                    className="flex flex-col items-center gap-2 min-w-[96px] group active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-[var(--cat-color)]"
+                    className="flex flex-col items-center gap-2 min-w-[96px] shrink-0 group active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-[var(--cat-color)]"
                   >
                     {/* Note: in Tailwind arbitrary values, underscores are the space
                         escape (in_srgb → in srgb). Keep them or the shadow silently vanishes. */}
