@@ -206,11 +206,9 @@ serve(async (req) => {
         .update({ status: 'cancelled' })
         .eq('id', subscription.id)
 
-      await supabaseAdmin
-        .from('listings')
-        .update({ is_featured: false, listing_priority: 0 })
-        .eq('user_id', user.id)
-
+      // NOTE: cancel does NOT un-feature listings — featured_until governs
+      // active features and the expire_featured_listings cron (01:03 UTC)
+      // cleans them up. Keeps parity with mp-webhook and cancel-subscription.
       await supabaseAdmin
         .from('profiles')
         .update({ subscription_type: 'none', subscription_expires_at: null })
@@ -223,11 +221,7 @@ serve(async (req) => {
         .update({ status: 'expired' })
         .eq('id', subscription.id)
 
-      await supabaseAdmin
-        .from('listings')
-        .update({ is_featured: false, listing_priority: 0 })
-        .eq('user_id', user.id)
-
+      // NOTE: same as cancel — no un-feature here, featured_until + cron wins.
       await supabaseAdmin
         .from('profiles')
         .update({ subscription_type: 'none', subscription_expires_at: null })
