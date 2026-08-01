@@ -127,3 +127,11 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+export interface LegalConsent {
+  id: string
+  user_id: string
+  document: 'terms' | 'privacy'
+  version: string
+  accepted_at: string
+}

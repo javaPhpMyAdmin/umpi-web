@@ -5,7 +5,10 @@
  * 1. QueryClientProvider — TanStack Query cache for all data fetching
  * 2. AuthProvider — Global auth state (session, profile, mutations)
  * 3. BrowserRouter — Client-side routing
- * 4. Routes — Page composition with lazy loading per route
+ * 4. LegalConsentGate — Full-screen consent wall for users who haven't
+ *    accepted the current legal version (exempts /terminos, /privacidad,
+ *    auth callbacks, password recovery — see LegalConsentGate.tsx)
+ * 5. Routes — Page composition with lazy loading per route
  *
  * ROUTE GUARDS:
  * - <GuestRoute>     → only for unauthenticated users (login, register)
@@ -26,6 +29,7 @@ import { AuthProvider } from '../contexts/AuthContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import GuestRoute from '../components/auth/GuestRoute'
+import LegalConsentGate from '../components/legal/LegalConsentGate'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 
@@ -47,6 +51,8 @@ const PublishPage = lazy(() => import('../features/listings/pages/PublishPage'))
 const EditPage = lazy(() => import('../features/listings/pages/EditPage'))
 const MessagesPage = lazy(() => import('../features/messages/pages/MessagesPage'))
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'))
+const TermsPage = lazy(() => import('../features/legal/pages/TermsPage'))
+const PrivacyPage = lazy(() => import('../features/legal/pages/PrivacyPage'))
 
 // Minimal loading shell — renders instantly while chunks download
 function PageShell() {
@@ -80,6 +86,13 @@ export default function AppProviders() {
       <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          {/*
+            LegalConsentGate wraps ALL routes: a logged-in user without a
+            current-version legal acceptance sees a full-screen consent wall
+            before any page. Exempt paths (legal docs, auth redirects, password
+            recovery) are handled inside the gate — see LegalConsentGate.tsx.
+          */}
+          <LegalConsentGate>
           <Suspense fallback={<PageShell />}>
             <Routes>
               {/* ── Public pages ─────────────────────────────────────────── */}
@@ -87,6 +100,8 @@ export default function AppProviders() {
               <Route path="/explorar" element={<ExplorePage />} />
               <Route path="/destacados" element={<FeaturedPage />} />
               <Route path="/producto/:id" element={<ProductDetailPage />} />
+              <Route path="/terminos" element={<TermsPage />} />
+              <Route path="/privacidad" element={<PrivacyPage />} />
 
               {/* ── Guest-only pages (redirect to / if already logged in) ── */}
               <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
@@ -114,6 +129,7 @@ export default function AppProviders() {
               <Route path="/planes" element={<PlansPage />} />
             </Routes>
           </Suspense>
+          </LegalConsentGate>
         </BrowserRouter>
       </AuthProvider>
       </ThemeProvider>

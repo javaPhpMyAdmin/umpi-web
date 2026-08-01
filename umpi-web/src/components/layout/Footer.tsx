@@ -8,9 +8,10 @@ const footerLinks = [
   { to: '/publicar', label: 'Publicar' },
 ]
 
-const helpLinks = [
+const helpLinks: Array<{ label: string; to?: string; href?: string }> = [
   { href: '#', label: 'Ayuda' },
-  { href: '#', label: 'Privacidad' },
+  { to: '/terminos', label: 'Términos y Condiciones' },
+  { to: '/privacidad', label: 'Privacidad' },
 ]
 
 export default function Footer() {
@@ -55,15 +56,25 @@ export default function Footer() {
 
         {/* Links Column */}
         <div className="flex flex-col gap-2">
-          {helpLinks.map((link) => (
-            <a
-              key={link.label}
-              className="font-label-bold text-label-bold text-text-secondary hover:text-primary-container transition-colors cursor-pointer w-fit"
-              href={link.href}
-            >
-              {link.label}
-            </a>
-          ))}
+          {helpLinks.map((link) =>
+            link.to ? (
+              <Link
+                key={link.label}
+                to={link.to}
+                className="font-label-bold text-label-bold text-text-secondary hover:text-primary-container transition-colors cursor-pointer w-fit"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                className="font-label-bold text-label-bold text-text-secondary hover:text-primary-container transition-colors cursor-pointer w-fit"
+                href={link.href}
+              >
+                {link.label}
+              </a>
+            )
+          )}
         </div>
       </div>
     </footer>

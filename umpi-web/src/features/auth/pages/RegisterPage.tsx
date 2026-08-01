@@ -5,6 +5,9 @@ import Footer from '../../../components/layout/Footer'
 import { useAuth } from '../../../contexts/AuthContext'
 import { isDisposableEmail } from '../../../lib/blockedEmails'
 
+const CONSENT_REQUIRED_ERROR =
+  'Tenés que aceptar los términos y condiciones y la política de privacidad para continuar'
+
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -12,6 +15,8 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false)
   // Honeypot — bots auto-fill this, humans never see it
   const [website, setWebsite] = useState('')
+  // Legal consent — required before creating the account
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const { sendMagicLink, isSendingMagicLink, loginWithGoogle, isLoggingInWithGoogle } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,6 +25,11 @@ export default function RegisterPage() {
 
     // Honeypot: bots auto-fill hidden fields, humans never touch them
     if (website) return
+
+    if (!acceptedTerms) {
+      setError(CONSENT_REQUIRED_ERROR)
+      return
+    }
 
     if (isDisposableEmail(email)) {
       setError('No se permiten emails temporales. Usá tu correo real.')
@@ -31,6 +41,21 @@ export default function RegisterPage() {
       setSuccess(true)
     } catch (err: any) {
       setError(err.message || 'Error al enviar el link mágico')
+    }
+  }
+
+  const handleGoogle = async () => {
+    setError('')
+
+    if (!acceptedTerms) {
+      setError(CONSENT_REQUIRED_ERROR)
+      return
+    }
+
+    try {
+      await loginWithGoogle()
+    } catch (err: any) {
+      setError(err.message || 'Error al iniciar sesión con Google')
     }
   }
 
@@ -138,6 +163,36 @@ export default function RegisterPage() {
                   />
                 </div>
 
+                {/* Legal consent checkbox */}
+                <div className="flex items-start gap-3">
+                  <input
+                    id="accepted-terms"
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary-container cursor-pointer"
+                  />
+                  <label
+                    htmlFor="accepted-terms"
+                    className="font-body-base text-body-base text-text-secondary leading-relaxed cursor-pointer select-none"
+                  >
+                    Acepto los{' '}
+                    <Link
+                      to="/terminos"
+                      className="text-primary-container font-label-bold hover:underline"
+                    >
+                      Términos y Condiciones
+                    </Link>{' '}
+                    y la{' '}
+                    <Link
+                      to="/privacidad"
+                      className="text-primary-container font-label-bold hover:underline"
+                    >
+                      Política de Privacidad
+                    </Link>
+                  </label>
+                </div>
+
                 {/* Submit */}
                 <button
                   type="submit"
@@ -166,7 +221,7 @@ export default function RegisterPage() {
                 {/* Google Button */}
                 <button
                   type="button"
-                  onClick={() => loginWithGoogle()}
+                  onClick={handleGoogle}
                   disabled={isLoggingInWithGoogle}
                   className="w-full h-[48px] rounded-lg border border-border-light bg-surface flex items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
