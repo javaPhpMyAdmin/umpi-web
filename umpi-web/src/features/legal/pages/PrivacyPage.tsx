@@ -12,41 +12,146 @@ export default function PrivacyPage() {
       updatedAt={`Última actualización: ${LEGAL_VERSION_LABEL}`}
     >
       <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Información recopilada
+        </h2>
         <p className="text-text-secondary leading-relaxed">
-          En UMPI, nos comprometemos a proteger la privacidad de los usuarios.
+          UMPI puede recopilar:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Nombre.</li>
+          <li>Correo electrónico.</li>
+          <li>Número de teléfono.</li>
+          <li>Ciudad.</li>
+          <li>Ubicación aproximada (cuando el usuario la autorice).</li>
+          <li>Fotografías de publicaciones.</li>
+          <li>Descripción de los avisos.</li>
+          <li>Dirección IP.</li>
+          <li>Datos técnicos del dispositivo.</li>
+          <li>Información de uso de la plataforma.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Finalidad
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Los datos serán utilizados para:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Crear la cuenta.</li>
+          <li>Publicar anuncios.</li>
+          <li>Mostrar publicaciones.</li>
+          <li>Contactar usuarios.</li>
+          <li>Brindar soporte.</li>
+          <li>Mejorar la plataforma.</li>
+          <li>Detectar fraudes.</li>
+          <li>Cumplir obligaciones legales.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Pagos
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Los pagos de publicaciones destacadas y suscripciones son procesados
+          por Mercado Pago.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI no almacena números completos de tarjetas ni credenciales
+          bancarias.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Información que recolectamos
+          Compartición de datos
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Recopilamos datos personales como tu nombre, correo electrónico y teléfono, únicamente necesarios para gestionar tus publicaciones y facilitar el contacto entre usuarios.
+          Los datos podrán compartirse únicamente con:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Mercado Pago (para pagos).</li>
+          <li>Proveedores tecnológicos.</li>
+          <li>Autoridades competentes cuando la ley lo requiera.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI no vende datos personales.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Uso de la información
+          Seguridad
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Tus datos se utilizan exclusivamente para que el marketplace funcione correctamente, permitiendo mostrar tus anuncios y conectar buyers y sellers.
+          UMPI adopta medidas técnicas y organizativas para proteger la
+          información contra accesos no autorizados.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Protección de datos
+          Derechos del usuario
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Implementamos medidas de seguridad para resguardar tu información personal y evitar accesos no autorizados.
+          De conformidad con la Ley 25.326, el usuario podrá solicitar:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Acceso.</li>
+          <li>Rectificación.</li>
+          <li>Actualización.</li>
+          <li>Supresión de sus datos personales.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          Las solicitudes podrán realizarse mediante el correo electrónico
+          oficial de soporte de UMPI.
         </p>
       </section>
 
       <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Conservación
+        </h2>
         <p className="text-text-secondary leading-relaxed">
-          Si tenés alguna duda sobre cómo manejamos tus datos, no dudes en preguntar.
+          Los datos serán conservados mientras exista la cuenta o durante el
+          tiempo necesario para cumplir obligaciones legales.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Cookies
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          El sitio web podrá utilizar cookies para mejorar la experiencia del
+          usuario y obtener estadísticas de uso.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Menores de edad
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI no está destinada a menores de 18 años sin autorización de sus
+          representantes legales.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Actualizaciones
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Esta Política de Privacidad podrá modificarse cuando resulte
+          necesario.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          La fecha de la última actualización será publicada junto con este
+          documento.
         </p>
       </section>
     </LegalPageLayout>

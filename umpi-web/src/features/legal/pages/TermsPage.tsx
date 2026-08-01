@@ -12,35 +12,183 @@ export default function TermsPage() {
       updatedAt={`Última actualización: ${LEGAL_VERSION_LABEL}`}
     >
       <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Identificación
+        </h2>
         <p className="text-text-secondary leading-relaxed">
-          Al utilizar este sitio, aceptás cumplir con las siguientes condiciones:
+          Bienvenido a UMPI. Al utilizar la aplicación o el sitio web de UMPI,
+          aceptás estos Términos y Condiciones. Si no estás de acuerdo con
+          ellos, no deberás utilizar la plataforma.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Responsabilidad en el Contenido
+          Objeto de UMPI
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Los usuarios son responsables de la veracidad y legalidad de la información que publican en los avisos. Queda prohibido publicar contenido ofensivo, fraudulento o que infrinja derechos de terceros.
+          UMPI es una plataforma digital destinada a la publicación de anuncios
+          clasificados de bienes y servicios.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI facilita el contacto entre usuarios, pero no compra, vende,
+          distribuye ni garantiza los productos o servicios publicados.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Publicaciones Destacadas
+          Registro
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Los servicios o productos destacados están sujetos a un pago según las tarifas establecidas. El pago deberá realizarse según se indique en la plataforma para poder activar la visibilidad especial.
+          Para utilizar determinadas funciones será necesario crear una cuenta.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          El usuario declara que los datos suministrados son verdaderos y se
+          compromete a mantenerlos actualizados.
         </p>
       </section>
 
       <section>
         <h2 className="font-header-md text-header-md text-text-deep mb-2">
-          Privacidad
+          Publicaciones
         </h2>
         <p className="text-text-secondary leading-relaxed">
-          Toda la información personal recolectada será tratada de acuerdo a nuestra Política de Privacidad, asegurando su confidencialidad y uso exclusivo para la gestión de su cuenta y publicaciones.
+          Cada usuario es el único responsable de:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>La información publicada.</li>
+          <li>Las fotografías.</li>
+          <li>Los precios.</li>
+          <li>La descripción.</li>
+          <li>La legalidad del producto o servicio ofrecido.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          Está prohibido publicar:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Productos ilegales.</li>
+          <li>Armas.</li>
+          <li>Drogas.</li>
+          <li>Contenido ofensivo.</li>
+          <li>Material con derechos de autor sin autorización.</li>
+          <li>Información falsa o engañosa.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI podrá eliminar publicaciones que incumplan estas normas.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Responsabilidad
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI no garantiza:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>La identidad de los usuarios.</li>
+          <li>La calidad de los productos.</li>
+          <li>El cumplimiento de las operaciones.</li>
+          <li>La veracidad de las publicaciones.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          Toda negociación será responsabilidad exclusiva de las partes.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Pagos
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Las publicaciones destacadas y suscripciones podrán abonarse mediante
+          Mercado Pago.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Los pagos son procesados exclusivamente por Mercado Pago conforme a
+          sus propios términos y políticas.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI no almacena datos de tarjetas de crédito o débito.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Suscripciones
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Las suscripciones podrán renovarse automáticamente mientras el usuario
+          no solicite su cancelación.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          El usuario podrá cancelar la renovación desde su cuenta o mediante los
+          canales de atención indicados.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Derecho de arrepentimiento
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Cuando corresponda conforme a la legislación argentina, el usuario
+          podrá ejercer el derecho de revocar la contratación dentro del plazo
+          legal.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Suspensión de cuentas
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI podrá suspender o eliminar cuentas que:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Incumplan estos términos.</li>
+          <li>Publiquen contenido prohibido.</li>
+          <li>Realicen actividades fraudulentas.</li>
+          <li>Intenten vulnerar la seguridad de la plataforma.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Propiedad intelectual
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Todo el contenido propio de UMPI (marca, logotipo, diseño, software y
+          textos) pertenece a UMPI.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          No podrá copiarse sin autorización.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Modificaciones
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          UMPI podrá modificar estos términos cuando resulte necesario.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Las modificaciones serán publicadas dentro de la plataforma indicando
+          su fecha de actualización.
+        </p>
+      </section>
+
+      {/* Section 12 (Legislación aplicable) body is pending client text —
+          do not invent legal copy. Neutral placeholder until the client
+          delivers the section text. */}
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Legislación aplicable
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          Sección pendiente de actualización.
         </p>
       </section>
     </LegalPageLayout>
