@@ -11,11 +11,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   useNotificationCount,
   useRealtimeNotifications,
 } from '../../hooks/useNotifications';
 import Avatar from '../ui/Avatar';
+import iconDarkMode from '../../assets/icon_dark_mode.png';
 
 const navLinks = [
   { to: '/', label: 'Inicio', icon: 'home' },
@@ -35,6 +37,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, profile, logout, isLoggingOut } = useAuth();
+  const { isDark } = useTheme();
   const { data: unreadCount } = useNotificationCount(session?.user?.id);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -81,7 +84,7 @@ export default function Navbar() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-1.5">
             <img
-              src="/icon.png"
+              src={isDark ? iconDarkMode : '/icon.png'}
               alt="Umpi"
               className="w-16 h-16"
             />
