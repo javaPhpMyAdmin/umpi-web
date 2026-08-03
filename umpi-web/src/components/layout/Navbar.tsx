@@ -17,7 +17,7 @@ import {
   useRealtimeNotifications,
 } from '../../hooks/useNotifications';
 import Avatar from '../ui/Avatar';
-import iconDarkMode from '../../assets/icon_dark_mode.png';
+import iconDarkMode from '../../assets/icon_dark_mode.webp';
 
 const navLinks = [
   { to: '/', label: 'Inicio', icon: 'home' },
