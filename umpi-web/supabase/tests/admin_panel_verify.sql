@@ -37,12 +37,15 @@
 -- column lock bypasses system writes with auth.uid() IS NULL).
 --
 -- Execution (from repo root, after migrations are applied):
---   psql "$SUPABASE_DB_URL" -f supabase/tests/admin_panel_verify.sql
--- (or, via the CLI, `supabase db query --linked -f supabase/tests/admin_panel_verify.sql`)
+--   psql -v ON_ERROR_STOP=1 "$SUPABASE_DB_URL" -f supabase/tests/admin_panel_verify.sql
+-- (or, via the CLI, `supabase db query --linked -f supabase/tests/admin_panel_verify.sql`
+--  — note the CLI path sends raw SQL only; psql meta-commands like \set are NOT
+--  supported there, so keep this script free of psql-only syntax).
 --
 -- PASS = the script completes and prints 'VERIFICATION PASSED ...'
 -- FAIL = an exception with a 'FAIL: ...' message aborts the transaction;
---        ROLLBACK still applies and nothing is persisted.
+--        nothing is persisted. When run through psql, pass -v ON_ERROR_STOP=1
+--        so the gate exits NONZERO on the first FAIL (CI-safe).
 
 BEGIN;
 
@@ -50,16 +53,24 @@ BEGIN;
 
 -- 1) Ensure the two plans exist (slug is UNIQUE; ON CONFLICT tolerates an
 --    existing seed). The subscriptions join reads the plan NAME for the
---    payload, so only existence matters here.
-INSERT INTO public.subscription_plans
-  (id, name, slug, price, currency, features, listing_priority,
-   max_images, max_featured, featured_duration_days, is_active)
-VALUES
-  ('00000000-0000-4000-8000-0000000000c1', 'Estándar', 'estandar', 100, 'ARS',
-   '[]'::jsonb, 1, 10, 1, 30, true),
-  ('00000000-0000-4000-8000-0000000000c2', 'Premium', 'premium', 200, 'ARS',
-   '[]'::jsonb, 2, 20, 10, 30, true)
-ON CONFLICT (slug) DO NOTHING;
+--    payload, so only existence matters here. Guarded by to_regclass so a
+--    migrations-only replay (no subscription_plans table) skips the whole
+--    subscriptions setup instead of dying on "relation does not exist" — D10.
+DO $$
+BEGIN
+  IF to_regclass('public.subscription_plans') IS NULL THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.subscription_plans
+    (id, name, slug, price, currency, features, listing_priority,
+     max_images, max_featured, featured_duration_days, is_active)
+  VALUES
+    ('00000000-0000-4000-8000-0000000000c1', 'Estándar', 'estandar', 100, 'ARS',
+     '[]'::jsonb, 1, 10, 1, 30, true),
+    ('00000000-0000-4000-8000-0000000000c2', 'Premium', 'premium', 200, 'ARS',
+     '[]'::jsonb, 2, 20, 10, 30, true)
+  ON CONFLICT (slug) DO NOTHING;
+END $$;
 
 -- 2) Seed the two test users FIRST (FK targets for profiles + listings).
 --    Minimal GoTrue columns; the handle_new_user trigger fires on each
@@ -91,9 +102,15 @@ VALUES
   ('00000000-0000-4000-8000-0000000000e2', 'admin-test inactive', 'inactive');
 
 -- 5) Admin user: 1 active + 1 cancelled subscription (plan looked up by slug).
+--    Guarded by to_regclass: on a migrations-only replay (no subscriptions
+--    table) this setup is skipped — D10.
 DO $$
 DECLARE v_plan uuid;
 BEGIN
+  IF to_regclass('public.subscriptions') IS NULL
+     OR to_regclass('public.subscription_plans') IS NULL THEN
+    RETURN;
+  END IF;
   SELECT id INTO v_plan FROM public.subscription_plans WHERE slug = 'estandar';
   IF v_plan IS NULL THEN
     RAISE EXCEPTION 'FAIL: setup — estandar plan row missing';
@@ -128,13 +145,16 @@ BEGIN
     RAISE EXCEPTION 'FAIL: setup — expected 1 active / 1 inactive listing, got % / %', v_act, v_inact;
   END IF;
 
-  SELECT count(*) INTO v_subs FROM public.subscriptions
-   WHERE user_id = '00000000-0000-4000-8000-0000000000e1';
-  IF v_subs <> 2 THEN
-    RAISE EXCEPTION 'FAIL: setup — expected 2 subscriptions, got %', v_subs;
+  -- Subscriptions sanity check is to_regclass-guarded like the setup (D10):
+  -- on a migrations-only replay there are no subscriptions to count.
+  IF to_regclass('public.subscriptions') IS NOT NULL THEN
+    SELECT count(*) INTO v_subs FROM public.subscriptions
+     WHERE user_id = '00000000-0000-4000-8000-0000000000e1';
+    IF v_subs <> 2 THEN
+      RAISE EXCEPTION 'FAIL: setup — expected 2 subscriptions, got %', v_subs;
+    END IF;
   END IF;
 END $$;
-
 -- ── Grants matrix (as postgres; has_function_privilege reads the catalog) ───
 DO $$
 BEGIN
