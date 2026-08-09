@@ -34,9 +34,10 @@
 -- (backfill) run against live data inside the transaction. NOTE: e and f
 -- RAISE (hard-fail) when the incident row 548a19b4* / mp ddaa579d2b... is
 -- absent — they do NOT skip. They are therefore only safe to run against an
--- environment that carries the incident state (umpi-prod), or after the
--- migration's pinned reconcile has created that state; running them on a
--- fresh/dev database without the pin row fails by design. Post-deploy, every
+-- environment that carries the incident state (umpi-prod); the migration's
+-- pinned reconcile only reconciles around an existing pin row, it does not
+-- create it, so running them on a fresh/dev database without the pin row
+-- fails by design. Post-deploy, every
 -- scenario runs for real. Either way the script PASSES by completing without
 -- a FAIL exception and printing the verdict SELECT at the end.
 --
