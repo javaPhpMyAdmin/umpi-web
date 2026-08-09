@@ -122,7 +122,18 @@ async function runCheckoutGuard(
 ): Promise<GuardOutcome> {
   // 1. Guard query — the newest live row for (user, plan), same
   //    created_at DESC, id DESC tie-break as the migration reconcile.
-  const row = await selectLiveSubscription(admin, userId, planId)
+  //    Masked like every other DB error in this file (Slice 2 convention):
+  //    the raw PostgrestError never reaches the client.
+  let row: Awaited<ReturnType<typeof selectLiveSubscription>>
+  try {
+    row = await selectLiveSubscription(admin, userId, planId)
+  } catch (error) {
+    console.error('create-subscription: guard select failed:', error)
+    return {
+      action: 'respond',
+      response: jsonErrorResponse(500, 'Database error during subscription check'),
+    }
+  }
 
   if (!row) {
     // No live row — create flow.
@@ -291,6 +302,20 @@ async function runCheckoutGuard(
     // expired / paused) is never resumed — the dead-init_point contract
     // guarantees the client is never handed a checkout URL for a preapproval
     // MP no longer expects.
+    if (!preapproval.init_point) {
+      // MP violated its own pending-preapproval shape (no checkout URL).
+      // A 200 without init_point would silently re-enable the client button
+      // with no redirect and no error — an invisible retry loop. Fail loud:
+      // the client shows the error, and the row goes stale after
+      // PENDING_STALE_MS, freeing the slot via the replace path below.
+      console.error(
+        `create-subscription: resume blocked — preapproval ${preapprovalId} is pending but has no init_point`,
+      )
+      return {
+        action: 'respond',
+        response: jsonErrorResponse(502, 'MercadoPago returned a pending preapproval without a checkout URL'),
+      }
+    }
     return {
       action: 'respond',
       response: new Response(
