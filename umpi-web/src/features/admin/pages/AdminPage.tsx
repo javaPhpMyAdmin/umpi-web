@@ -5,14 +5,14 @@
  * state, backed by the admin_list_users RPC (SECURITY DEFINER — the
  * auth.users data it reads is not client-queryable).
  *
- * PHASE 2 (PR 2): page shell + StatsCards. The users table and subscriptions
- * overview mount in Phase 3 (PR 3) — see the TODO markers below.
  */
 
 import Navbar from '../../../components/layout/Navbar'
 import Footer from '../../../components/layout/Footer'
 import { useAdminUsers } from '../../../hooks/useAdminUsers'
 import StatsCards from '../components/StatsCards'
+import UsersTable from '../components/UsersTable'
+import SubscriptionsSection from '../components/SubscriptionsSection'
 
 export default function AdminPage() {
   const { data, isLoading, isError, refetch } = useAdminUsers()
@@ -76,11 +76,11 @@ export default function AdminPage() {
             {/* Stats overview */}
             <StatsCards stats={data.stats} />
 
-            {/*
-              PHASE 3 (PR 3) — panel detail mounts here:
-              <UsersTable users={data.users} />
-              <SubscriptionsSection subscriptions={data.subscriptions} />
-            */}
+            {/* Registered users table */}
+            <UsersTable users={data.users} />
+
+            {/* Active subscriptions overview */}
+            <SubscriptionsSection subscriptions={data.subscriptions} />
           </>
         )}
       </main>

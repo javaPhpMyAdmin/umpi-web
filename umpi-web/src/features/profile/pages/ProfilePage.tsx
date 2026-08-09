@@ -152,6 +152,15 @@ export default function ProfilePage() {
                 Configuración de Cuenta
               </button>
             </div>
+            {profile?.is_admin === true && (
+              <Link
+                to="/administrador"
+                className="w-full h-[48px] px-lg rounded-[14px] border border-border-light text-text-secondary font-label-bold text-label-bold hover:bg-surface-container-low hover:text-primary-dark transition-colors flex items-center justify-center gap-xs mt-3"
+              >
+                <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+                Panel Admin
+              </Link>
+            )}
           </div>
 
           {/* Subscription Card */}
