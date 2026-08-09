@@ -135,3 +135,36 @@ export interface LegalConsent {
   version: string
   accepted_at: string
 }
+
+export interface AdminStats {
+  total_users: number
+  new_users_today: number
+  new_users_this_week: number
+}
+
+export interface AdminUser {
+  id: string
+  email: string
+  full_name: string | null
+  created_at: string
+  subscription_type: string
+  subscription_status: string | null
+  subscription_expires_at: string | null
+  trial_ends_at: string | null
+  active_listings_count: number
+}
+
+export interface AdminSubscription {
+  id: string
+  payer_email: string
+  plan_name: string
+  status: string
+  started_at: string
+  expires_at: string | null
+}
+
+export interface AdminUsersResponse {
+  stats: AdminStats
+  users: AdminUser[]
+  subscriptions: AdminSubscription[]
+}

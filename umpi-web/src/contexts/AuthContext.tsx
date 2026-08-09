@@ -25,6 +25,10 @@ interface AuthContextValue {
     | null;
   /** User profile from the profiles table (null if not loaded or not logged in) */
   profile: Profile | null;
+  /** Profile query error — non-null when the profiles row failed to load
+   *  (e.g. network failure, missing row). Consumers can use this to render
+   *  an escape path instead of an infinite spinner. */
+  profileError: Error | null;
   /** True while the initial session is being loaded */
   isLoading: boolean;
   /** Send reset password email */
@@ -89,7 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ── Profile query ──────────────────────────────────────────────────────────
   // Only fetches when we have a logged-in user with an ID.
   // Uses the session user ID as a query key dependency — auto-refetches on login.
-  const { data: rawProfile } = useQuery({
+  const { data: rawProfile, error: profileError } = useQuery({
     queryKey: ['auth', 'profile', session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return null;
@@ -321,6 +325,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextValue = {
     session: session ?? null,
     profile,
+    profileError,
     isLoading,
     login: async (params) => {
       await loginMutation.mutateAsync(params);

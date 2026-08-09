@@ -13,6 +13,7 @@
  * ROUTE GUARDS:
  * - <GuestRoute>     → only for unauthenticated users (login, register)
  * - <ProtectedRoute> → only for authenticated users (publish, profile, messages)
+ * - <AdminRoute>     → only for admins (admin panel; non-admins → /perfil)
  * - No guard          → public pages (home, explore, product detail)
  *
  * PERFORMANCE:
@@ -29,6 +30,7 @@ import { AuthProvider } from '../contexts/AuthContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import GuestRoute from '../components/auth/GuestRoute'
+import AdminRoute from '../components/auth/AdminRoute'
 import LegalConsentGate from '../components/legal/LegalConsentGate'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -51,6 +53,7 @@ const PublishPage = lazy(() => import('../features/listings/pages/PublishPage'))
 const EditPage = lazy(() => import('../features/listings/pages/EditPage'))
 const MessagesPage = lazy(() => import('../features/messages/pages/MessagesPage'))
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'))
+const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'))
 const TermsPage = lazy(() => import('../features/legal/pages/TermsPage'))
 const PrivacyPage = lazy(() => import('../features/legal/pages/PrivacyPage'))
 
@@ -124,6 +127,9 @@ export default function AppProviders() {
               <Route path="/editar/:id" element={<ProtectedRoute><EditPage /></ProtectedRoute>} />
               <Route path="/mensajes" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
               <Route path="/notificaciones" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+              {/* ── Admin panel (admin-only, inside LegalConsentGate) */}
+              <Route path="/administrador" element={<AdminRoute><AdminPage /></AdminRoute>} />
 
               {/* ── Semi-public (visible to all, but plans page may show CTA) */}
               <Route path="/planes" element={<PlansPage />} />
