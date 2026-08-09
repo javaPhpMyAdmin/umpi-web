@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   cancelPreapproval,
   clearProfileSubscription,
@@ -75,9 +76,9 @@ async function isSignatureValid(
 // Conflict = a webhook event that would create a second live (active|pending)
 // row for the same (user_id, plan_id): preapproval P resolves to a user/plan
 // that already has a live row on a DIFFERENT preapproval ("the winner"). The
-// winner row and the profile are NEVER modified in the conflict path — only
-// the loser (P) or the unpaid pending winner is cancelled, so the user can
-// never end up billed by two preapprovals for one plan.
+// winner ROW is never modified, and the profile is only ever converged to the
+// paid state for the promoted P (same write as the happy path) — so the user
+// can never end up billed by two preapprovals for one plan.
 //
 // Resolution branches (spec "Webhook conflict resolution" + decision 6.2):
 //   - winner still `pending` AND P `authorized`  → PROMOTE P: the user paid
@@ -91,6 +92,14 @@ async function isSignatureValid(
 // `conflict_resolution_pending` marker makes the hourly
 // expire-pending-subscriptions cron converge later (GET P → PUT-cancel while
 // authorized/pending → clear marker).
+//
+// Sole deliberate exception: promoteP returns 5xx when P's activate upsert
+// fails for a NON-23505 reason AFTER the winner was already cancelled (MP +
+// DB). A 200 there would forfeit the user's payment — P is active, not a
+// marker row, so the cron would never converge it and P stays authorized on
+// MP (still billing). The 500 makes MP retry the event, and the retry's
+// conflict pre-check finds no live winner, so the happy path reactivates the
+// paid P. These handled 500s are the only conflict-path 5xx responses.
 
 interface ConflictContext {
   winner: SubscriptionRow
@@ -144,8 +153,9 @@ function buildActiveRow(
   userId: string,
   planId: string,
   externalReference: string,
+  nextBillingDateOverride?: string,
 ): Record<string, unknown> {
-  const nextBillingDate = resolveNextBillingDate(preapproval)
+  const nextBillingDate = nextBillingDateOverride || resolveNextBillingDate(preapproval)
 
   return {
     user_id: userId,
@@ -161,6 +171,51 @@ function buildActiveRow(
 }
 
 /**
+ * Converge the profile to the paid state for an active subscription — the
+ * same write for the happy path and the promote-P resolution, so both stay
+ * identical by construction (gate-review fix: promote used to leave the
+ * profile on 'trial').
+ *
+ * Throws Error('Plan not found for subscription') when the plan slug cannot
+ * be resolved, and Error('Database error during profile update') when the
+ * profile update fails. Callers decide the response: the happy path 500s so
+ * MP retries (trial benefits must not stick while the subscription is
+ * active); promote-P degrades to conflictRetryViaCron (never 5xx).
+ */
+async function writeActiveProfile(
+  admin: SupabaseClient,
+  userId: string,
+  planId: string,
+  nextBillingDate: string,
+): Promise<void> {
+  const { data: plan, error: planError } = await admin
+    .from('subscription_plans')
+    .select('slug')
+    .eq('id', planId)
+    .single()
+
+  if (planError || !plan?.slug) {
+    throw new Error('Plan not found for subscription')
+  }
+
+  const { error: profileError } = await admin
+    .from('profiles')
+    .update({
+      subscription_type: plan.slug,
+      subscription_expires_at: nextBillingDate,
+      // W2: purchasing consumes the trial — a later cancel/expire
+      // (subscription_type -> 'none') must NOT re-grant trial benefits.
+      subscription_status: 'paid',
+      trial_ends_at: null,
+    })
+    .eq('id', userId)
+
+  if (profileError) {
+    throw new Error('Database error during profile update')
+  }
+}
+
+/**
  * Ensure P's row is `cancelled` with the conflict marker set to `marker`.
  * Upserts keyed by mp_preapproval_id (unique index): an existing row is
  * updated, a missing one is created — cancelled rows never trip the live
@@ -168,23 +223,32 @@ function buildActiveRow(
  *
  * HARD CONTRACT (task 3.3 / spec): a marker ensure-write failure must NEVER
  * turn into a 5xx — the webhook must always ack MP or MP retries forever.
- * Log it and let the caller return its 200.
+ * Returns true on success, false on failure (envelope error OR thrown
+ * rejection — a fetch-level throw must never escape to the outer catch);
+ * the caller logs and returns its 200 either way.
  */
-async function ensureConflictMarker(ctx: ConflictContext, marker: boolean): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('subscriptions')
-    .upsert({
-      user_id: ctx.userId,
-      plan_id: ctx.planId,
-      mp_preapproval_id: ctx.preapprovalId,
-      external_reference: ctx.externalReference,
-      status: 'cancelled',
-      conflict_resolution_pending: marker,
-      started_at: ctx.preapproval.date_created || new Date().toISOString(),
-    }, { onConflict: 'mp_preapproval_id' })
+async function ensureConflictMarker(ctx: ConflictContext, marker: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        user_id: ctx.userId,
+        plan_id: ctx.planId,
+        mp_preapproval_id: ctx.preapprovalId,
+        external_reference: ctx.externalReference,
+        status: 'cancelled',
+        conflict_resolution_pending: marker,
+        started_at: ctx.preapproval.date_created || new Date().toISOString(),
+      }, { onConflict: 'mp_preapproval_id' })
 
-  if (error) {
-    console.error('mp-webhook: conflict marker ensure-write failed:', error)
+    if (error) {
+      console.error('mp-webhook: conflict marker ensure-write failed:', error)
+      return false
+    }
+    return true
+  } catch (markerError) {
+    console.error('mp-webhook: conflict marker ensure-write threw:', markerError)
+    return false
   }
 }
 
@@ -222,11 +286,16 @@ async function cancelPAndMark(ctx: ConflictContext): Promise<Response> {
  * the index invariant; the end state matches the contract (winner cancelled in
  * MP + DB, P active).
  *
- * The profile is NOT touched (conflict contract "winner/profile untouched"):
- * after promotion the user HAS an active row (P), so a conditional clear would
- * be a no-op and a direct write could clobber another plan's profile state.
+ * After P is active the profile is converged to the paid state with the same
+ * write the happy path uses (writeActiveProfile) — P must not leave the user
+ * on 'trial' benefits. The winner ROW is never modified; the only profile
+ * write in the conflict path is this convergence for the promoted P. A
+ * convergence failure returns 200 retry_via_cron, never 5xx: P is active,
+ * not a marker row, so the cron will not cancel it, and the profile settles
+ * via sync-subscription or P's next webhook event.
  */
 async function promoteP(ctx: ConflictContext): Promise<Response> {
+  const nextBillingDate = resolveNextBillingDate(ctx.preapproval)
   const winnerMpId = ctx.winner.mp_preapproval_id
   if (!winnerMpId) {
     // Unreachable — selectLiveSubscription filters out rows without an MP id.
@@ -275,7 +344,7 @@ async function promoteP(ctx: ConflictContext): Promise<Response> {
   const { error: promoteError } = await supabaseAdmin
     .from('subscriptions')
     .upsert(
-      buildActiveRow(ctx.preapproval, ctx.preapprovalId, ctx.userId, ctx.planId, ctx.externalReference),
+      buildActiveRow(ctx.preapproval, ctx.preapprovalId, ctx.userId, ctx.planId, ctx.externalReference, nextBillingDate),
       { onConflict: 'mp_preapproval_id' },
     )
 
@@ -296,12 +365,26 @@ async function promoteP(ctx: ConflictContext): Promise<Response> {
     })
   }
 
+  // 4. Converge the profile (plan fetch + paid-state write via the same
+  //    helper as the happy path). Failure is NOT a 5xx — P is active, not a
+  //    marker row, so the cron cannot cancel it, and the profile converges
+  //    later via sync-subscription or P's next webhook event re-entering
+  //    the happy path. (The handled 500s above are the only conflict-path
+  //    5xx responses — see the header comment.)
+  try {
+    await writeActiveProfile(supabaseAdmin, ctx.userId, ctx.planId, nextBillingDate)
+  } catch (profileError) {
+    console.error('mp-webhook: promote — profile convergence failed:', profileError)
+    return conflictRetryViaCron()
+  }
+
   console.log(`mp-webhook: conflict promoted P — user=${ctx.userId} plan=${ctx.planId} mp_id=${ctx.preapprovalId} winner=${ctx.winner.id} cancelled`)
   return conflictOk()
 }
 
 /**
- * Conflict resolution entry. Winner row and profile are never modified.
+ * Conflict resolution entry. The winner ROW is never modified; the profile is
+ * only converged for the promoted P (never cleared or clobbered otherwise).
  *  - winner still `pending` AND P `authorized` → PROMOTE P (decision 6.2).
  *  - otherwise → PUT-cancel P + marker (cancel-P path).
  */
@@ -535,7 +618,7 @@ serve(async (req) => {
       const { error: upsertError } = await supabaseAdmin
         .from('subscriptions')
         .upsert(
-          buildActiveRow(preapproval, preapprovalId, userId, planId, externalReference),
+          buildActiveRow(preapproval, preapprovalId, userId, planId, externalReference, nextBillingDate),
           { onConflict: 'mp_preapproval_id' },
         )
 
@@ -575,46 +658,24 @@ serve(async (req) => {
         })
       }
 
-      // Fetch plan slug for profile update. If the plan cannot be resolved,
+      // Converge the profile (plan fetch + paid-state write via the shared
+      // helper). If the plan cannot be resolved or the profile write fails,
       // DO NOT ack: the profile would stay 'trial' while the subscription is
       // active — the trial branch of feature_listing would win and the user
       // would keep trial benefits with the trial never consumed. Returning
-      // 500 makes MP retry the event (idempotent upsert on retry).
-      const { data: plan, error: planError } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('slug')
-        .eq('id', planId)
-        .single()
-
-      if (planError || !plan?.slug) {
-        console.error('Failed to resolve plan on authorize:', planError ?? `plan ${planId} not found`)
-        return new Response(JSON.stringify({ error: 'Plan not found for subscription' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-
-      // Update profile (no listings touched — toggle + RPC handle featuring)
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          subscription_type: plan.slug,
-          subscription_expires_at: nextBillingDate,
-          // W2: purchasing consumes the trial — a later cancel/expire
-          // (subscription_type -> 'none') must NOT re-grant trial benefits.
-          subscription_status: 'paid',
-          trial_ends_at: null,
-        })
-        .eq('id', userId)
-
-      if (profileError) {
-        // Do NOT ack the webhook: MP retries the event, and the retry
-        // re-runs the idempotent upsert + profile update.
-        console.error('Failed to update profile on authorize:', profileError)
-        return new Response(JSON.stringify({ error: 'Database error during profile update' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        })
+      // 500 makes MP retry the event (idempotent upsert + profile write on
+      // retry).
+      try {
+        await writeActiveProfile(supabaseAdmin, userId, planId, nextBillingDate)
+      } catch (profileError) {
+        console.error('mp-webhook: profile convergence on authorize failed:', profileError)
+        return new Response(
+          JSON.stringify({ error: profileError instanceof Error ? profileError.message : 'Database error during profile update' }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
       }
 
       console.log(`Subscription authorized: user=${userId} plan=${planId} mp_id=${preapprovalId}`)
