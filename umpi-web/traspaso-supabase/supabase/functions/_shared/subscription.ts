@@ -86,6 +86,45 @@ export async function selectLiveSubscription(
 }
 
 /**
+ * Select the subscription to cancel, active-first (design D4,
+ * cancel-subscription): the newest ACTIVE row wins; only when the user has
+ * no active row is the newest PENDING row selected. Differs from
+ * `selectLiveSubscription` (newest of active+pending mixed) — the explicit
+ * user intent "cancel my plan" must stop the active billing row, never a
+ * leftover pending one. Same `created_at DESC, id DESC` tie-break and MP
+ * preapproval filters.
+ *
+ * @param admin - Service-role Supabase client (bypasses RLS).
+ * @param userId - The subscription owner.
+ * @returns The row, or null when the user has neither an active nor a
+ *   pending subscription.
+ */
+export async function selectActiveFirstSubscription(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<SubscriptionRow | null> {
+  // Iterating LIVE_STATUSES in order gives active-then-pending priority.
+  for (const status of LIVE_STATUSES) {
+    const { data, error } = await admin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', status)
+      .not('mp_preapproval_id', 'is', null)
+      .not('mp_preapproval_id', 'eq', '')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) throw error
+    if (data) return data
+  }
+
+  return null
+}
+
+/**
  * Fetch a preapproval from MercadoPago.
  *
  * Returns the parsed JSON body on success (callers read `status`,
