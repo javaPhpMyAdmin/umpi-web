@@ -51,8 +51,14 @@ export function hasPaidPlan(profile: Profile | null | undefined): boolean {
 
 /**
  * Returns true if the user is currently in trial period.
+ *
+ * Accepts any shape exposing subscription_status + trial_ends_at (a full
+ * Profile or a read-only subset like the admin RPC payload), so the trial
+ * boundary can't drift between surfaces.
  */
-export function isInTrial(profile: Profile | null | undefined): boolean {
+export function isInTrial(
+  profile: Pick<Profile, 'subscription_status' | 'trial_ends_at'> | null | undefined
+): boolean {
   if (!profile) return false
   return (
     profile.subscription_status === 'trial' &&
@@ -115,4 +121,25 @@ export function getTrialDaysLeft(profile: Profile | null | undefined): number | 
   return Math.max(0, Math.ceil(
     (new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   ))
+}
+
+// ─── Status labels (shared by the admin panel) ──────────────────────────────
+// Single source of truth for subscription status → Spanish label, consumed by
+// both admin components (UsersTable, SubscriptionsSection). Values mirror the
+// profile subscription_status values (trial / active / paid — paid is written
+// by the payment webhook and sync-subscription, see 20260731000002) and the
+// subscriptions table status values (active / cancelled / expired / pending).
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
+  trial: 'Prueba',
+  active: 'Activa',
+  paid: 'Pagada',
+  cancelled: 'Cancelada',
+  expired: 'Expirada',
+  pending: 'Pendiente',
+}
+
+export function subscriptionStatusLabel(status: string | null | undefined): string | null {
+  if (!status) return null
+  return SUBSCRIPTION_STATUS_LABELS[status] ?? status
 }

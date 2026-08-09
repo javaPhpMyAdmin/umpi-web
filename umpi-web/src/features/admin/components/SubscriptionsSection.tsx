@@ -7,28 +7,22 @@
  * The RPC only returns rows with status = 'active', so an empty array is a
  * legit empty state (no active subscriptions yet, or a migrations-only
  * replay where the subscriptions tables are absent) — never treated as a
- * bug. expires_at is nullable, so the cell degrades to a muted dash.
+ * bug. Both started_at (dump schema: DEFAULT now(), no NOT NULL) and
+ * expires_at are nullable at runtime, so those cells degrade to a muted
+ * dash. Status labels come from the shared SUBSCRIPTION_STATUS_LABELS map
+ * (src/lib/subscription.ts); the badge derives its color from the actual
+ * status instead of assuming active.
  */
 
 import { formatDate } from '../../../lib/utils'
+import { subscriptionStatusLabel } from '../../../lib/subscription'
 import type { AdminSubscription } from '../../../types'
 
 interface SubscriptionsSectionProps {
   subscriptions: AdminSubscription[]
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Activa',
-  cancelled: 'Cancelada',
-  expired: 'Expirada',
-  pending: 'Pendiente',
-}
-
 const COLUMNS = ['Pagador', 'Plan', 'Estado', 'Inicio', 'Vence'] as const
-
-function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status
-}
 
 export default function SubscriptionsSection({ subscriptions }: SubscriptionsSectionProps) {
   return (
@@ -90,14 +84,24 @@ export default function SubscriptionsSection({ subscriptions }: SubscriptionsSec
 
                   {/* Estado */}
                   <td className="px-lg py-md align-middle">
-                    <span className="inline-flex items-center gap-1 text-[12px] font-label-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600">
-                      {statusLabel(subscription.status)}
+                    <span
+                      className={`inline-flex items-center gap-1 text-[12px] font-label-bold px-2 py-0.5 rounded-full ${
+                        subscription.status === 'active'
+                          ? 'bg-green-50 text-green-600'
+                          : 'bg-surface-container-low text-text-secondary'
+                      }`}
+                    >
+                      {subscriptionStatusLabel(subscription.status)}
                     </span>
                   </td>
 
                   {/* Inicio */}
                   <td className="px-lg py-md align-middle font-body-base text-body-base text-text-secondary whitespace-nowrap">
-                    {formatDate(subscription.started_at)}
+                    {subscription.started_at ? (
+                      formatDate(subscription.started_at)
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
                   </td>
 
                   {/* Vence */}
