@@ -151,6 +151,32 @@ BEGIN
   --    skip if an index with the convention name already exists, or if ANY
   --    other unique index already covers (user_id, plan_id) as its first two
   --    key columns (a conflicting index would make this one redundant).
+  --
+  --    Fail-loud pre-probe: the reconciles above only pair rows with a
+  --    comparable created_at (NULL > x IS NULL → NULL pairs survive). If any
+  --    (user_id, plan_id) group still holds >1 live row here, CREATE INDEX
+  --    would die with a confusing 23505 — raise a clear error instead so the
+  --    operator fixes the NULL-created_at rows before applying.
+  IF EXISTS (
+    SELECT 1
+      FROM (
+        SELECT user_id, plan_id
+          FROM public.subscriptions
+         WHERE status IN ('active','pending')
+         GROUP BY user_id, plan_id
+        HAVING count(*) > 1
+      ) dup
+  ) THEN
+    RAISE EXCEPTION
+      'subscription_dupe_prevention: % (user_id, plan_id) group(s) still hold >1 live row after reconcile (likely NULL created_at) — resolve before creating the unique index',
+      (SELECT count(*) FROM (
+         SELECT user_id, plan_id
+           FROM public.subscriptions
+          WHERE status IN ('active','pending')
+          GROUP BY user_id, plan_id
+         HAVING count(*) > 1) x);
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
       FROM pg_index i
@@ -164,7 +190,7 @@ BEGIN
       FROM pg_index i
      WHERE i.indrelid = 'public.subscriptions'::regclass
        AND i.indisunique
-       AND i.indnkeyatts >= 2
+       AND i.indnkeyatts = 2
        AND (SELECT attnum FROM pg_attribute
              WHERE attrelid = i.indrelid AND attname = 'user_id') = i.indkey[0]
        AND (SELECT attnum FROM pg_attribute

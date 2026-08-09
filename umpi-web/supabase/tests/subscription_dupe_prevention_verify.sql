@@ -31,7 +31,12 @@
 -- Pre-deploy behavior (migration NOT yet applied — the state when this file
 -- first ships): scenarios a/b/c/g/h/i detect the missing migration artifacts
 -- and skip themselves with a NOTICE; d (reconcile logic) + e (pin) + f
--- (backfill) run against live data inside the transaction. Post-deploy, every
+-- (backfill) run against live data inside the transaction. NOTE: e and f
+-- RAISE (hard-fail) when the incident row 548a19b4* / mp ddaa579d2b... is
+-- absent — they do NOT skip. They are therefore only safe to run against an
+-- environment that carries the incident state (umpi-prod), or after the
+-- migration's pinned reconcile has created that state; running them on a
+-- fresh/dev database without the pin row fails by design. Post-deploy, every
 -- scenario runs for real. Either way the script PASSES by completing without
 -- a FAIL exception and printing the verdict SELECT at the end.
 --
@@ -146,7 +151,7 @@ BEGIN
          AND indexname = 'idx_subscriptions_user_plan_live'
          AND indexdef LIKE '%UNIQUE%'
          AND indexdef LIKE '%(user_id, plan_id)%'
-         AND indexdef LIKE '%status IN ((%''active''%''pending''%'
+         AND indexdef LIKE '%status = ANY (ARRAY[''active''::text, ''pending''::text])%'
     ) THEN
       RAISE EXCEPTION 'FAIL: index exists but is not the expected unique partial (user_id, plan_id) WHERE status IN (active,pending)';
     END IF;
