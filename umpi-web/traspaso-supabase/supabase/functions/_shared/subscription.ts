@@ -189,8 +189,13 @@ export async function clearProfileSubscription(
   )
 
   if (error) {
+    // Log the PostgrestError server-side but rethrow a GENERIC error: the
+    // raw message can leak schema/SQL wording to the client (e.g. the RPC
+    // missing until the migration ships). Callers map it to a user-facing
+    // 500. The row is already committed to cancelled/expired at this point,
+    // so a client retry converges — no state corruption.
     console.error('clear_profile_subscription_if_no_active RPC failed:', error)
-    throw error
+    throw new Error('Database error during profile update')
   }
 
   return Boolean(data)
