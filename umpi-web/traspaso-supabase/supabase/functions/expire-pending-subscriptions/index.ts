@@ -94,7 +94,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 
   let diff = 0
   for (let i = 0; i < aBytes.length; i++) {
-    diff |= aBytes[i] ^ bBytes[i]
+    // Indices are in-bounds by the length check above; the assertions are
+    // for strict-mode (noUncheckedIndexedAccess) typing of Uint8Array.
+    diff |= aBytes[i]! ^ bBytes[i]!
   }
   return diff === 0
 }
