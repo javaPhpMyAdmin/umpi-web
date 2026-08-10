@@ -10,9 +10,12 @@ import {
 } from '../_shared/subscription.ts'
 import type { SubscriptionRow } from '../_shared/subscription.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('SUPABASE_URL and SERVICE_ROLE_KEY environment variables are required')
+}
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 const corsHeaders = {
@@ -498,9 +501,6 @@ serve(async (req) => {
       notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
     }
 
-    console.error('MP request body:', JSON.stringify(mpBody, null, 2))
-    console.error('MP idempotency key length:', idempotencyKey.length)
-
     const mpResponse = await fetch('https://api.mercadopago.com/preapproval', {
       method: 'POST',
       headers: {
@@ -514,10 +514,13 @@ serve(async (req) => {
     const mpData = await mpResponse.json()
 
     if (!mpResponse.ok) {
-      console.error('MP API error full:', JSON.stringify({ status: mpResponse.status, body: mpData, headers: Object.fromEntries(mpResponse.headers.entries()) }, null, 2))
+      console.error(`create-subscription: MP API error status=${mpResponse.status} code=${(mpData as any)?.error?.code ?? 'unknown'} message=${(mpData as any)?.error?.message ?? 'unknown'}`)
       return new Response(JSON.stringify({
         error: 'MercadoPago API error',
-        details: mpData,
+        details: {
+          code: (mpData as any)?.error?.code ?? null,
+          message: (mpData as any)?.error?.message ?? null,
+        },
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -72,8 +72,12 @@ import {
 } from '../_shared/subscription.ts'
 import type { SubscriptionRow } from '../_shared/subscription.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseAdmin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('SUPABASE_URL and SERVICE_ROLE_KEY environment variables are required')
+}
+const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

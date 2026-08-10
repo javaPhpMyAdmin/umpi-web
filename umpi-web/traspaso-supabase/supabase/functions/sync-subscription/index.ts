@@ -1,11 +1,14 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { checkRateLimit, rateLimitResponse } from '../_shared/rate-limit.ts'
-import { selectLiveSubscription, fetchPreapproval, clearProfileSubscription } from '../_shared/subscription.ts'
+import { selectLiveSubscription, fetchPreapproval, clearProfileSubscription, LIVE_STATUSES } from '../_shared/subscription.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('SUPABASE_URL and SERVICE_ROLE_KEY environment variables are required')
+}
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 const corsHeaders = {
@@ -148,14 +151,49 @@ serve(async (req) => {
         subscription.expires_at ||
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      // Update subscription
-      await supabaseAdmin
+      // Update subscription (W3: result-checked — never report synced on a
+      // failed or no-op update). Status predicate (LIVE_STATUSES) so a row a
+      // concurrent writer moved out of the live slot (e.g. webhook cancelled
+      // it) is NOT resurrected: it no longer matches, returns 0 rows, and the
+      // sync reports synced:false instead of re-activating a dead row.
+      const { data: updatedRows, error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({
           status: 'active',
           expires_at: nextBillingDate,
         })
         .eq('id', subscription.id)
+        .in('status', [...LIVE_STATUSES])
+        .select('id')
+
+      if (updateError) {
+        console.error('Failed to mark subscription active on sync:', updateError)
+        return new Response(
+          JSON.stringify({ error: 'Database error during subscription update' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        // No live row matched — the subscription is no longer in the live
+        // slot (concurrent cancellation/expiry, or the row is gone). Report
+        // the failure so the client never treats the sync as successful.
+        console.error(`sync-subscription: row ${subscription.id} not synced to active — no longer live`)
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            synced: false,
+            reason: 'Subscription is no longer live',
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
 
       // Update profile (plan resolved above — required, not optional)
       const { error: profileError } = await supabaseAdmin

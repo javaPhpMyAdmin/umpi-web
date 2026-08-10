@@ -7,9 +7,12 @@ import {
   selectActiveFirstSubscription,
 } from '../_shared/subscription.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('SUPABASE_URL and SERVICE_ROLE_KEY environment variables are required')
+}
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 const corsHeaders = {

@@ -8,8 +8,11 @@ import {
 } from '../_shared/subscription.ts'
 import type { SubscriptionRow } from '../_shared/subscription.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('SUPABASE_URL and SERVICE_ROLE_KEY environment variables are required')
+}
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
 const textEncoder = new TextEncoder()
@@ -55,6 +58,15 @@ async function isSignatureValid(
 
   const parts = parseSignatureHeader(req.headers.get('x-signature'))
   if (!parts) return false
+
+  // W1: reject stale signatures — `ts` (unix seconds) is part of the signed
+  // manifest; a signature older than 5 minutes is a replay (MP recommends a
+  // max 5 min freshness window). Fail closed on missing/non-numeric ts.
+  const tsSeconds = Number(parts.ts)
+  if (!parts.ts || !Number.isFinite(tsSeconds) || Math.abs(Date.now() / 1000 - tsSeconds) > 300) {
+    console.error(`mp-webhook: signature rejected — stale or invalid ts=${parts.ts} age_seconds=${parts.ts ? Math.round(Date.now() / 1000 - tsSeconds) : 'n/a'}`)
+    return false
+  }
 
   const bodyDataId = (body as any).data?.id
   const rawDataId = String(dataId || (typeof bodyDataId === 'string' ? bodyDataId : '') || '')
@@ -424,10 +436,7 @@ serve(async (req) => {
       }
     }
 
-    // --- 2. Log full payload for debugging ---
-    console.log('mp-webhook received:', JSON.stringify({ headers: Object.fromEntries(req.headers.entries()), body }, null, 2))
-
-    // --- 3. Extract event ID and type from query params (IPN) or body (Webhooks) ---
+    // --- 2. Extract event ID and type from query params (IPN) or body (Webhooks) ---
     const url = new URL(req.url)
     const queryType = url.searchParams.get('type') || url.searchParams.get('topic')
     const queryDataId = url.searchParams.get('data.id') || url.searchParams.get('id')
@@ -512,7 +521,7 @@ serve(async (req) => {
       const invoice = await invoiceResponse.json()
       preapprovalId = invoice.preapproval_id || null
       if (!preapprovalId) {
-        console.error('Invoice has no preapproval_id:', JSON.stringify(invoice))
+        console.error(`mp-webhook: invoice for event id=${dataId} has no preapproval_id`)
         return new Response(JSON.stringify({ error: 'Invoice has no preapproval_id' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
