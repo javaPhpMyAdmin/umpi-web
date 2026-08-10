@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { checkRateLimit, rateLimitResponse } from '../_shared/rate-limit.ts'
+import {
+  cancelPreapproval,
+  clearProfileSubscription,
+  selectActiveFirstSubscription,
+} from '../_shared/subscription.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -57,17 +62,15 @@ serve(async (req) => {
       return rateLimitResponse(rateLimit)
     }
 
-    // --- 2. Get user's active subscription ---
-    const { data: subscriptions, error: subError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .not('mp_preapproval_id', 'is', null)
-      .not('mp_preapproval_id', 'eq', '')
-      .order('started_at', { ascending: false })
+    // --- 2. Active-first row selection (design D4) ---
+    // Explicit user intent "cancel my plan": the newest ACTIVE row is
+    // cancelled; only when the user has no active row does the newest PENDING
+    // row get cancelled (spec "Deterministic row selection"). This stops the
+    // active billing row, never a leftover pending one. Same created_at DESC,
+    // id DESC tie-break as the migration reconcile.
+    const subscription = await selectActiveFirstSubscription(supabaseAdmin, user.id)
 
-    if (subError || !subscriptions || subscriptions.length === 0) {
+    if (!subscription) {
       return new Response(JSON.stringify({
         error: 'No se encontró una suscripción activa',
       }), {
@@ -76,12 +79,19 @@ serve(async (req) => {
       })
     }
 
-    console.log(`cancel-subscription: found ${subscriptions.length} active subscription(s)`)
-    subscriptions.forEach((s, i) => console.log(`  [${i}] id=${s.id} mp_preapproval_id=${s.mp_preapproval_id} plan_id=${s.plan_id} started_at=${s.started_at}`))
+    const preapprovalId = subscription.mp_preapproval_id
+    if (!preapprovalId) {
+      // Unreachable in practice — selectActiveFirstSubscription filters out
+      // rows without an MP preapproval id. Kept as a defensive type guard.
+      return new Response(JSON.stringify({
+        error: 'No se encontró el ID de preaprobación en MP',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-    const activeSub = subscriptions[0]
-
-    // --- 3. Call MercadoPago API to cancel preapproval ---
+    // --- 3. Cancel preapproval on MercadoPago ---
     const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN')
     if (!mpAccessToken) {
       return new Response(JSON.stringify({ error: 'MP_ACCESS_TOKEN not configured' }), {
@@ -90,35 +100,26 @@ serve(async (req) => {
       })
     }
 
-    const preapprovalId = activeSub.mp_preapproval_id
-    console.log(`cancel-subscription: attempting to cancel preapproval ${preapprovalId} for user ${user.id}`)
-    if (!preapprovalId) {
-      return new Response(JSON.stringify({ error: 'No se encontró el ID de preaprobación en MP' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    console.log(`cancel-subscription: cancelling row=${subscription.id} status=${subscription.status} preapproval=${preapprovalId} for user=${user.id}`)
 
-    const mpResponse = await fetch(
-      `https://api.mercadopago.com/preapproval/${preapprovalId}`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${mpAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'cancelled' }),
-      },
-    )
-
-    const mpResponseText = await mpResponse.text()
-    console.log(`cancel-subscription: MP response ${mpResponse.status}: ${mpResponseText}`)
-
-    if (!mpResponse.ok) {
+    try {
+      // Shared helper: PUT status='cancelled', tolerates already-cancelled
+      // (400 + GET-confirm). Throws on any real failure — never report
+      // success when MP rejected the cancellation.
+      await cancelPreapproval(mpAccessToken, preapprovalId)
+    } catch (mpError) {
+      // The helper throws with the MP HTTP status + response body embedded in
+      // the message. Reconstruct the existing client-facing 502 shape from
+      // it; the client only branches on error presence, but keeping the
+      // original keys preserves parity with the pre-helper response.
+      const message = mpError instanceof Error ? mpError.message : String(mpError)
+      console.error('cancel-subscription: MercadoPago cancel failed:', message)
+      const mpStatusMatch = message.match(/HTTP (\d+)/)
+      const mpStatus = mpStatusMatch ? Number(mpStatusMatch[1]) : null
       return new Response(JSON.stringify({
-        error: `MercadoPago rechazó la cancelación (HTTP ${mpResponse.status})`,
-        mp_status: mpResponse.status,
-        mp_body: mpResponseText,
+        error: `MercadoPago rechazó la cancelación${mpStatus ? ` (HTTP ${mpStatus})` : ''}`,
+        mp_status: mpStatus,
+        mp_body: message,
         preapproval_id: preapprovalId,
       }), {
         status: 502,
@@ -126,18 +127,43 @@ serve(async (req) => {
       })
     }
 
-    // --- 4. Update local DB (only after successful MP cancellation) ---
-    // Update subscription status to cancelled
-    await supabaseAdmin
+    // --- 4. Mark cancelled locally (only after successful MP cancellation) ---
+    // Result-checked update, same contract as sync-subscription's cancelled
+    // branch: the row must be marked cancelled BEFORE the conditional profile
+    // clear runs — never clear on a failed update.
+    const { data, error: updateError } = await supabaseAdmin
       .from('subscriptions')
       .update({ status: 'cancelled' })
-      .eq('id', activeSub.id)
+      .eq('id', subscription.id)
+      .select('id')
 
-    // Reset profile subscription
-    await supabaseAdmin
-      .from('profiles')
-      .update({ subscription_type: 'none', subscription_expires_at: null })
-      .eq('id', user.id)
+    if (updateError) {
+      console.error('Failed to mark subscription cancelled:', updateError)
+      return new Response(
+        JSON.stringify({ error: 'Database error during subscription update' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    if (!data || data.length === 0) {
+      // No row was updated — a concurrent writer already moved it out of the
+      // live slot. The conditional clear below stays safe because the RPC
+      // re-checks active rows atomically (same reasoning as sync-subscription).
+      console.log(`cancel-subscription: row ${subscription.id} already updated by another writer`)
+    }
+
+    // --- 5. Conditional profile clear ---
+    // Only when the user has NO remaining row with status 'active' across all
+    // plans (spec "Conditional profile clear"). The RPC re-checks atomically;
+    // false means another active plan remains and the profile intentionally
+    // keeps its subscription fields.
+    const cleared = await clearProfileSubscription(supabaseAdmin, user.id)
+    if (!cleared) {
+      console.log(`cancel-subscription: profile kept for user=${user.id} (another active plan remains)`)
+    }
 
     console.log(`Subscription cancelled: user=${user.id} mp_id=${preapprovalId}`)
 

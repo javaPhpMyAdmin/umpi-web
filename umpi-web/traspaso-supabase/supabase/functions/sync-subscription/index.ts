@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { checkRateLimit, rateLimitResponse } from '../_shared/rate-limit.ts'
+import { selectLiveSubscription, fetchPreapproval, clearProfileSubscription } from '../_shared/subscription.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -57,16 +58,14 @@ serve(async (req) => {
       return rateLimitResponse(rateLimit)
     }
 
-    // --- 2. Find user's subscription with MP preapproval ID (any status) ---
-    const { data: subscriptions, error: subError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .not('mp_preapproval_id', 'is', null)
-      .not('mp_preapproval_id', 'eq', '')
-      .order('started_at', { ascending: false })
+    // --- 2. Deterministic row selection: the newest live row ---
+    // Only the newest active|pending row is synced against MP (spec
+    // "Deterministic row selection") — legacy duplicates are ignored and
+    // reconciled by the migration. Shared helper so cancel-subscription
+    // (PR 3) and the checkout guard pick the same row.
+    const subscription = await selectLiveSubscription(supabaseAdmin, user.id)
 
-    if (subError || !subscriptions || subscriptions.length === 0) {
+    if (!subscription) {
       return new Response(JSON.stringify({
         ok: true,
         synced: false,
@@ -77,10 +76,10 @@ serve(async (req) => {
       })
     }
 
-    const subscription = subscriptions[0]
     const preapprovalId = subscription.mp_preapproval_id
-
     if (!preapprovalId) {
+      // Unreachable in practice — selectLiveSubscription filters out rows
+      // without an MP preapproval id. Kept as a defensive type guard.
       return new Response(JSON.stringify({
         ok: true,
         synced: false,
@@ -100,17 +99,10 @@ serve(async (req) => {
       })
     }
 
-    const mpResponse = await fetch(
-      `https://api.mercadopago.com/preapproval/${preapprovalId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${mpAccessToken}`,
-        },
-      },
-    )
-
-    if (!mpResponse.ok) {
-      const mpError = await mpResponse.text()
+    let preapproval: any
+    try {
+      preapproval = await fetchPreapproval(mpAccessToken, preapprovalId)
+    } catch (mpError) {
       console.error('sync-subscription: MP API error:', mpError)
       return new Response(JSON.stringify({ error: 'Error al consultar MercadoPago' }), {
         status: 500,
@@ -118,7 +110,6 @@ serve(async (req) => {
       })
     }
 
-    const preapproval = await mpResponse.json()
     const mpStatus: string = preapproval.status
 
     // --- 4. Sync status to DB ---
@@ -201,31 +192,75 @@ serve(async (req) => {
 
       dbStatusChanged = true
     } else if (mpStatus === 'cancelled') {
-      await supabaseAdmin
+      // Result-checked update: the row must be marked cancelled BEFORE the
+      // conditional profile clear runs — never clear on a failed update.
+      const { data, error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ status: 'cancelled' })
         .eq('id', subscription.id)
+        .select('id')
+
+      if (updateError) {
+        console.error('Failed to mark subscription cancelled on sync:', updateError)
+        return new Response(
+          JSON.stringify({ error: 'Database error during subscription update' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      if (!data || data.length === 0) {
+        // No row was updated — a concurrent writer already moved it out of
+        // the live slot. The conditional clear below stays safe because the
+        // RPC re-checks active rows atomically.
+        console.log(`sync-subscription: row ${subscription.id} already updated by another writer`)
+      }
 
       // NOTE: cancel does NOT un-feature listings — featured_until governs
       // active features and the expire_featured_listings cron (01:03 UTC)
       // cleans them up. Keeps parity with mp-webhook and cancel-subscription.
-      await supabaseAdmin
-        .from('profiles')
-        .update({ subscription_type: 'none', subscription_expires_at: null })
-        .eq('id', user.id)
+
+      // Conditional profile clear: only when the user has NO remaining
+      // active row across all plans (spec "Conditional profile clear"). The
+      // RPC returns false when another active plan remains — the profile
+      // intentionally keeps its subscription fields.
+      const cleared = await clearProfileSubscription(supabaseAdmin, user.id)
+      if (!cleared) {
+        console.log(`sync-subscription: profile kept for user=${user.id} (another active plan remains)`)
+      }
 
       dbStatusChanged = true
     } else if (mpStatus === 'expired') {
-      await supabaseAdmin
+      // Result-checked update, same contract as the cancelled branch.
+      const { data, error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ status: 'expired' })
         .eq('id', subscription.id)
+        .select('id')
+
+      if (updateError) {
+        console.error('Failed to mark subscription expired on sync:', updateError)
+        return new Response(
+          JSON.stringify({ error: 'Database error during subscription update' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      if (!data || data.length === 0) {
+        console.log(`sync-subscription: row ${subscription.id} already updated by another writer`)
+      }
 
       // NOTE: same as cancel — no un-feature here, featured_until + cron wins.
-      await supabaseAdmin
-        .from('profiles')
-        .update({ subscription_type: 'none', subscription_expires_at: null })
-        .eq('id', user.id)
+
+      const cleared = await clearProfileSubscription(supabaseAdmin, user.id)
+      if (!cleared) {
+        console.log(`sync-subscription: profile kept for user=${user.id} (another active plan remains)`)
+      }
 
       dbStatusChanged = true
     }

@@ -1,5 +1,12 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  cancelPreapproval,
+  clearProfileSubscription,
+  selectLiveSubscription,
+} from '../_shared/subscription.ts'
+import type { SubscriptionRow } from '../_shared/subscription.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -62,6 +69,330 @@ async function isSignatureValid(
 
   const expected = await sha256HmacHex(secret, manifest)
   return expected === parts.v1.toLowerCase()
+}
+
+// --- Conflict resolution (design D3 + product decision 6.2) ---
+//
+// Conflict = a webhook event that would create a second live (active|pending)
+// row for the same (user_id, plan_id): preapproval P resolves to a user/plan
+// that already has a live row on a DIFFERENT preapproval ("the winner"). The
+// winner ROW is never modified, and the profile is only ever converged to the
+// paid state for the promoted P (same write as the happy path) — so the user
+// can never end up billed by two preapprovals for one plan.
+//
+// Resolution branches (spec "Webhook conflict resolution" + decision 6.2):
+//   - winner still `pending` AND P `authorized`  → PROMOTE P: the user paid
+//     through P, so P becomes the active row and the unpaid pending winner is
+//     cancelled in MP + DB (preserves the user's payment).
+//   - otherwise (winner `active`, or P not `authorized`) → PUT-cancel P and
+//     ensure P's row is `cancelled` with the conflict marker per outcome.
+//
+// Failure responses are always 200 — never 5xx for conflict outcomes — so MP
+// does not retry the event forever. When a cancellation fails, the
+// `conflict_resolution_pending` marker makes the hourly
+// expire-pending-subscriptions cron converge later (GET P → PUT-cancel while
+// authorized/pending → clear marker).
+//
+// Sole deliberate exception: promoteP returns 5xx when P's activate upsert
+// fails for a NON-23505 reason AFTER the winner was already cancelled (MP +
+// DB). A 200 there would forfeit the user's payment — P is active, not a
+// marker row, so the cron would never converge it and P stays authorized on
+// MP (still billing). The 500 makes MP retry the event, and the retry's
+// conflict pre-check finds no live winner, so the happy path reactivates the
+// paid P. These handled 500s are the only conflict-path 5xx responses.
+
+interface ConflictContext {
+  winner: SubscriptionRow
+  preapprovalId: string
+  externalReference: string
+  userId: string
+  planId: string
+  preapproval: any
+  mpStatus: string
+  mpAccessToken: string
+}
+
+function conflictOk(): Response {
+  return new Response(JSON.stringify({ ok: true, skipped: 'duplicate_conflict' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+function conflictRetryViaCron(): Response {
+  // 200 + resolution hint: MP must not retry; the hourly cron converges from
+  // the marker (contract: no 5xx for conflict outcomes).
+  return new Response(JSON.stringify({ skipped: 'duplicate_conflict', resolution: 'retry_via_cron' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+/**
+ * Resolve the expiry anchor for an authorized preapproval.
+ *
+ * MP test mode returns next_billing_date: null (or ''). Fall back to +30 days
+ * so expires_at / subscription_expires_at always carry a real expiry date and
+ * the expire_subscriptions cron can actually expire people. A webhook is a
+ * real MP event, so re-anchoring the period here is legitimate (unlike
+ * sync-subscription). The "30 days" backup period must stay aligned with
+ * subscription_plans.featured_duration_days (both plans are 30 today).
+ */
+function resolveNextBillingDate(preapproval: any): string {
+  return preapproval.next_billing_date ||
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+}
+
+/**
+ * Build the payload that (re)activates a subscription row from an authorized
+ * preapproval. Used by the happy path and by the promote-P resolution.
+ */
+function buildActiveRow(
+  preapproval: any,
+  preapprovalId: string,
+  userId: string,
+  planId: string,
+  externalReference: string,
+  nextBillingDateOverride?: string,
+): Record<string, unknown> {
+  const nextBillingDate = nextBillingDateOverride || resolveNextBillingDate(preapproval)
+
+  return {
+    user_id: userId,
+    plan_id: planId,
+    mp_preapproval_id: preapprovalId,
+    external_reference: externalReference,
+    status: 'active',
+    started_at: preapproval.date_created,
+    expires_at: nextBillingDate,
+    featured_used: 0,
+    period_start: new Date().toISOString(),
+  }
+}
+
+/**
+ * Converge the profile to the paid state for an active subscription — the
+ * same write for the happy path and the promote-P resolution, so both stay
+ * identical by construction (gate-review fix: promote used to leave the
+ * profile on 'trial').
+ *
+ * Throws Error('Plan not found for subscription') when the plan slug cannot
+ * be resolved, and Error('Database error during profile update') when the
+ * profile update fails. Callers decide the response: the happy path 500s so
+ * MP retries (trial benefits must not stick while the subscription is
+ * active); promote-P degrades to conflictRetryViaCron (never 5xx).
+ */
+async function writeActiveProfile(
+  admin: SupabaseClient,
+  userId: string,
+  planId: string,
+  nextBillingDate: string,
+): Promise<void> {
+  const { data: plan, error: planError } = await admin
+    .from('subscription_plans')
+    .select('slug')
+    .eq('id', planId)
+    .single()
+
+  if (planError || !plan?.slug) {
+    throw new Error('Plan not found for subscription')
+  }
+
+  const { error: profileError } = await admin
+    .from('profiles')
+    .update({
+      subscription_type: plan.slug,
+      subscription_expires_at: nextBillingDate,
+      // W2: purchasing consumes the trial — a later cancel/expire
+      // (subscription_type -> 'none') must NOT re-grant trial benefits.
+      subscription_status: 'paid',
+      trial_ends_at: null,
+    })
+    .eq('id', userId)
+
+  if (profileError) {
+    throw new Error('Database error during profile update')
+  }
+}
+
+/**
+ * Ensure P's row is `cancelled` with the conflict marker set to `marker`.
+ * Upserts keyed by mp_preapproval_id (unique index): an existing row is
+ * updated, a missing one is created — cancelled rows never trip the live
+ * (user_id, plan_id) index, so P never stays live.
+ *
+ * HARD CONTRACT (task 3.3 / spec): a marker ensure-write failure must NEVER
+ * turn into a 5xx — the webhook must always ack MP or MP retries forever.
+ * Returns true on success, false on failure (envelope error OR thrown
+ * rejection — a fetch-level throw must never escape to the outer catch);
+ * the caller logs and returns its 200 either way.
+ */
+async function ensureConflictMarker(ctx: ConflictContext, marker: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        user_id: ctx.userId,
+        plan_id: ctx.planId,
+        mp_preapproval_id: ctx.preapprovalId,
+        external_reference: ctx.externalReference,
+        status: 'cancelled',
+        conflict_resolution_pending: marker,
+        started_at: ctx.preapproval.date_created || new Date().toISOString(),
+      }, { onConflict: 'mp_preapproval_id' })
+
+    if (error) {
+      console.error('mp-webhook: conflict marker ensure-write failed:', error)
+      return false
+    }
+    return true
+  } catch (markerError) {
+    console.error('mp-webhook: conflict marker ensure-write threw:', markerError)
+    return false
+  }
+}
+
+/**
+ * Cancel-P resolution: PUT-cancel P on MP, then ensure P's row is `cancelled`
+ * with the marker reflecting the outcome (false = converged, true = the cron
+ * must retry the cancellation). Winner row and profile untouched.
+ */
+async function cancelPAndMark(ctx: ConflictContext): Promise<Response> {
+  let cancelledAtMp = false
+  try {
+    // Shared helper: PUT status='cancelled', tolerates already-cancelled
+    // (400 + GET-confirm). Throws on any real failure.
+    await cancelPreapproval(ctx.mpAccessToken, ctx.preapprovalId)
+    cancelledAtMp = true
+  } catch (mpError) {
+    console.error('mp-webhook: conflict — MP cancel of P failed:', mpError)
+  }
+
+  await ensureConflictMarker(ctx, !cancelledAtMp)
+
+  return cancelledAtMp ? conflictOk() : conflictRetryViaCron()
+}
+
+/**
+ * Promote-P resolution (product decision 6.2 — RESOLVED: preserve the user's
+ * payment). The winner row is still `pending` while conflicting preapproval P
+ * is `authorized`: the user paid through P, so P is promoted to `active` and
+ * the unpaid pending winner is cancelled in MP + DB.
+ *
+ * Ordering note: the winner is cancelled BEFORE P is activated — the pending
+ * winner occupies the (user_id, plan_id) live slot, and activating P first
+ * would trip the unique partial index (23505). Task bullet order lists promote
+ * first, but cancelling the winner first is the only sequence that satisfies
+ * the index invariant; the end state matches the contract (winner cancelled in
+ * MP + DB, P active).
+ *
+ * After P is active the profile is converged to the paid state with the same
+ * write the happy path uses (writeActiveProfile) — P must not leave the user
+ * on 'trial' benefits. The winner ROW is never modified; the only profile
+ * write in the conflict path is this convergence for the promoted P. A
+ * convergence failure returns 200 retry_via_cron, never 5xx: P is active,
+ * not a marker row, so the cron will not cancel it, and the profile settles
+ * via sync-subscription or P's next webhook event.
+ */
+async function promoteP(ctx: ConflictContext): Promise<Response> {
+  const nextBillingDate = resolveNextBillingDate(ctx.preapproval)
+  const winnerMpId = ctx.winner.mp_preapproval_id
+  if (!winnerMpId) {
+    // Unreachable — selectLiveSubscription filters out rows without an MP id.
+    console.error('mp-webhook: promote — winner has no MP preapproval id')
+    return new Response(JSON.stringify({ error: 'Database error during conflict resolution' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // 1. Cancel the pending winner on MP (tolerates already-cancelled). On
+  //    failure the winner still occupies the slot, so P cannot be promoted:
+  //    mark P cancelled + conflict_resolution_pending and let the hourly cron
+  //    converge (it GETs P → authorized → PUT-cancel → clears marker). No
+  //    perpetual charge, no silent loss.
+  try {
+    await cancelPreapproval(ctx.mpAccessToken, winnerMpId)
+  } catch (mpError) {
+    console.error('mp-webhook: promote — winner MP cancel failed:', mpError)
+    await ensureConflictMarker(ctx, true)
+    return conflictRetryViaCron()
+  }
+
+  // 2. Result-checked update: winner row → cancelled (frees the live slot).
+  const { data: winnerUpdate, error: winnerUpdateError } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ status: 'cancelled' })
+    .eq('id', ctx.winner.id)
+    .select('id')
+
+  if (winnerUpdateError) {
+    console.error('mp-webhook: promote — winner DB update failed:', winnerUpdateError)
+    await ensureConflictMarker(ctx, true)
+    return conflictRetryViaCron()
+  }
+
+  if (!winnerUpdate || winnerUpdate.length === 0) {
+    // A concurrent writer already moved the winner out of the live slot —
+    // proceed; the P upsert's 23505 backstop covers a concurrent occupant.
+    console.log(`mp-webhook: promote — winner ${ctx.winner.id} already updated by another writer`)
+  }
+
+  // 3. Promote P → active. Upsert keyed by mp_preapproval_id handles both an
+  //    existing P row (cancelled/expired from an earlier replace) and a
+  //    missing one (e.g. the checkout insert never committed).
+  const { error: promoteError } = await supabaseAdmin
+    .from('subscriptions')
+    .upsert(
+      buildActiveRow(ctx.preapproval, ctx.preapprovalId, ctx.userId, ctx.planId, ctx.externalReference, nextBillingDate),
+      { onConflict: 'mp_preapproval_id' },
+    )
+
+  if (promoteError?.code === '23505') {
+    // A concurrent writer grabbed the slot between the winner cancel and this
+    // upsert. P loses the race — converge like the cancel-P path (new winner
+    // untouched, P cancelled, marker per outcome). Re-entering promote here
+    // could ping-pong against the concurrent writer.
+    console.warn('mp-webhook: promote — live slot re-grabbed concurrently, cancelling P')
+    return await cancelPAndMark(ctx)
+  }
+
+  if (promoteError) {
+    console.error('mp-webhook: promote — P activate failed:', promoteError)
+    return new Response(JSON.stringify({ error: 'Database error during upsert' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // 4. Converge the profile (plan fetch + paid-state write via the same
+  //    helper as the happy path). Failure is NOT a 5xx — P is active, not a
+  //    marker row, so the cron cannot cancel it, and the profile converges
+  //    later via sync-subscription or P's next webhook event re-entering
+  //    the happy path. (The handled 500s above are the only conflict-path
+  //    5xx responses — see the header comment.)
+  try {
+    await writeActiveProfile(supabaseAdmin, ctx.userId, ctx.planId, nextBillingDate)
+  } catch (profileError) {
+    console.error('mp-webhook: promote — profile convergence failed:', profileError)
+    return conflictRetryViaCron()
+  }
+
+  console.log(`mp-webhook: conflict promoted P — user=${ctx.userId} plan=${ctx.planId} mp_id=${ctx.preapprovalId} winner=${ctx.winner.id} cancelled`)
+  return conflictOk()
+}
+
+/**
+ * Conflict resolution entry. The winner ROW is never modified; the profile is
+ * only converged for the promoted P (never cleared or clobbered otherwise).
+ *  - winner still `pending` AND P `authorized` → PROMOTE P (decision 6.2).
+ *  - otherwise → PUT-cancel P + marker (cancel-P path).
+ */
+async function resolveConflict(ctx: ConflictContext): Promise<Response> {
+  if (ctx.winner.status === 'pending' && ctx.mpStatus === 'authorized') {
+    return promoteP(ctx)
+  }
+  return cancelPAndMark(ctx)
 }
 
 serve(async (req) => {
@@ -254,31 +585,70 @@ serve(async (req) => {
     // --- 6. Process status change ---
     const mpStatus: string = preapproval.status
 
-    if (mpStatus === 'authorized') {
-      // MP test mode returns next_billing_date: null (or ''). Fall back to
-      // +30 days so expires_at / subscription_expires_at always carry a real
-      // expiry date and the expire_subscriptions cron can actually expire
-      // people. A webhook is a real MP event, so re-anchoring the period here
-      // is legitimate (unlike sync-subscription). The "30 days" backup period
-      // must stay aligned with subscription_plans.featured_duration_days
-      // (both plans are 30 today).
-      const nextBillingDate = preapproval.next_billing_date ||
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    // --- 6.5 Conflict pre-check (design D3 + spec "Webhook conflict
+    // resolution") ---
+    // A webhook that would create a second live row for (user, plan) — a
+    // different preapproval already occupies the slot — must resolve the
+    // conflict instead of writing (the unique partial index would 23505). The
+    // existing live row is "the winner": it is never modified. The check
+    // excludes P itself (same mp_preapproval_id) so event re-delivery of P
+    // stays on the happy path (idempotent activate).
+    const liveRow = await selectLiveSubscription(supabaseAdmin, userId, planId)
+    const winner = liveRow && liveRow.mp_preapproval_id !== preapprovalId
+      ? liveRow
+      : null
 
+    if (winner) {
+      return await resolveConflict({
+        winner,
+        preapprovalId,
+        externalReference,
+        userId,
+        planId,
+        preapproval,
+        mpStatus,
+        mpAccessToken,
+      })
+    }
+
+    if (mpStatus === 'authorized') {
       // Upsert subscription
+      const nextBillingDate = resolveNextBillingDate(preapproval)
+
       const { error: upsertError } = await supabaseAdmin
         .from('subscriptions')
-        .upsert({
-          user_id: userId,
-          plan_id: planId,
-          mp_preapproval_id: preapprovalId,
-          external_reference: externalReference,
-          status: 'active',
-          started_at: preapproval.date_created,
-          expires_at: nextBillingDate,
-          featured_used: 0,
-          period_start: new Date().toISOString(),
-        }, { onConflict: 'mp_preapproval_id' })
+        .upsert(
+          buildActiveRow(preapproval, preapprovalId, userId, planId, externalReference, nextBillingDate),
+          { onConflict: 'mp_preapproval_id' },
+        )
+
+      if (upsertError?.code === '23505') {
+        // 23505 backstop (spec "Webhook conflict resolution"): a DIFFERENT
+        // live row grabbed the (user_id, plan_id) slot between the pre-check
+        // and this insert (race). Re-select the winner and resolve the
+        // conflict against it.
+        console.warn('mp-webhook: unique violation on activate — resolving conflict')
+        const racer = await selectLiveSubscription(supabaseAdmin, userId, planId)
+        if (racer && racer.mp_preapproval_id !== preapprovalId) {
+          return await resolveConflict({
+            winner: racer,
+            preapprovalId,
+            externalReference,
+            userId,
+            planId,
+            preapproval,
+            mpStatus,
+            mpAccessToken,
+          })
+        }
+        // No live winner found (the racer already left the slot) — DB
+        // inconsistency; 500 lets MP retry and the retry activates normally.
+        console.error('mp-webhook: 23505 on activate without a live winner')
+        return new Response(JSON.stringify({ error: 'Database error during upsert' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
 
       if (upsertError) {
         console.error('Failed to upsert subscription:', upsertError)
@@ -288,74 +658,93 @@ serve(async (req) => {
         })
       }
 
-      // Fetch plan slug for profile update. If the plan cannot be resolved,
+      // Converge the profile (plan fetch + paid-state write via the shared
+      // helper). If the plan cannot be resolved or the profile write fails,
       // DO NOT ack: the profile would stay 'trial' while the subscription is
       // active — the trial branch of feature_listing would win and the user
       // would keep trial benefits with the trial never consumed. Returning
-      // 500 makes MP retry the event (idempotent upsert on retry).
-      const { data: plan, error: planError } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('slug')
-        .eq('id', planId)
-        .single()
-
-      if (planError || !plan?.slug) {
-        console.error('Failed to resolve plan on authorize:', planError ?? `plan ${planId} not found`)
-        return new Response(JSON.stringify({ error: 'Plan not found for subscription' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-
-      // Update profile (no listings touched — toggle + RPC handle featuring)
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          subscription_type: plan.slug,
-          subscription_expires_at: nextBillingDate,
-          // W2: purchasing consumes the trial — a later cancel/expire
-          // (subscription_type -> 'none') must NOT re-grant trial benefits.
-          subscription_status: 'paid',
-          trial_ends_at: null,
-        })
-        .eq('id', userId)
-
-      if (profileError) {
-        // Do NOT ack the webhook: MP retries the event, and the retry
-        // re-runs the idempotent upsert + profile update.
-        console.error('Failed to update profile on authorize:', profileError)
-        return new Response(JSON.stringify({ error: 'Database error during profile update' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        })
+      // 500 makes MP retry the event (idempotent upsert + profile write on
+      // retry).
+      try {
+        await writeActiveProfile(supabaseAdmin, userId, planId, nextBillingDate)
+      } catch (profileError) {
+        console.error('mp-webhook: profile convergence on authorize failed:', profileError)
+        return new Response(
+          JSON.stringify({ error: profileError instanceof Error ? profileError.message : 'Database error during profile update' }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
       }
 
       console.log(`Subscription authorized: user=${userId} plan=${planId} mp_id=${preapprovalId}`)
     } else if (mpStatus === 'cancelled') {
-      await supabaseAdmin
+      // Result-checked update, keyed by mp_preapproval_id (unique index —
+      // deterministic by identity). The row must be marked cancelled BEFORE
+      // the conditional profile clear runs — never clear on a failed update.
+      // Mirrors sync-subscription's cancelled branch.
+      const { data, error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ status: 'cancelled' })
         .eq('mp_preapproval_id', preapprovalId)
+        .select('id')
 
-      await supabaseAdmin
-        .from('profiles')
-        .update({ subscription_type: 'none', subscription_expires_at: null })
-        .eq('id', userId)
+      if (updateError) {
+        console.error('Failed to mark subscription cancelled on webhook:', updateError)
+        return new Response(JSON.stringify({ error: 'Database error during subscription update' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
 
-      // Listings stay featured until featured_until expires — cron handles cleanup
+      if (!data || data.length === 0) {
+        // No row was updated — a concurrent writer already moved it out of
+        // the live slot. The conditional clear below stays safe because the
+        // RPC re-checks active rows atomically.
+        console.log(`mp-webhook: row for mp_id=${preapprovalId} already updated by another writer`)
+      }
+
+      // NOTE: cancel does NOT un-feature listings — featured_until governs
+      // active features and the expire_featured_listings cron cleans them up.
+
+      // Conditional profile clear: only when the user has NO remaining active
+      // row across all plans (spec "Conditional profile clear"). The RPC
+      // returns false when another active plan remains — the profile
+      // intentionally keeps its subscription fields.
+      const cleared = await clearProfileSubscription(supabaseAdmin, userId)
+      if (!cleared) {
+        console.log(`mp-webhook: profile kept for user=${userId} (another active plan remains)`)
+      }
+
       console.log(`Subscription cancelled: user=${userId} mp_id=${preapprovalId}`)
     } else if (mpStatus === 'expired') {
-      await supabaseAdmin
+      // Result-checked update, same contract as the cancelled branch.
+      const { data, error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ status: 'expired' })
         .eq('mp_preapproval_id', preapprovalId)
+        .select('id')
 
-      await supabaseAdmin
-        .from('profiles')
-        .update({ subscription_type: 'none', subscription_expires_at: null })
-        .eq('id', userId)
+      if (updateError) {
+        console.error('Failed to mark subscription expired on webhook:', updateError)
+        return new Response(JSON.stringify({ error: 'Database error during subscription update' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
 
-      // Listings stay featured until featured_until expires — cron handles cleanup
+      if (!data || data.length === 0) {
+        console.log(`mp-webhook: row for mp_id=${preapprovalId} already updated by another writer`)
+      }
+
+      // NOTE: same as cancel — no un-feature here, featured_until + cron wins.
+
+      const cleared = await clearProfileSubscription(supabaseAdmin, userId)
+      if (!cleared) {
+        console.log(`mp-webhook: profile kept for user=${userId} (another active plan remains)`)
+      }
+
       console.log(`Subscription expired: user=${userId} mp_id=${preapprovalId}`)
     } else {
       console.log(`Unhandled preapproval status: ${mpStatus} for id=${preapprovalId}`)
