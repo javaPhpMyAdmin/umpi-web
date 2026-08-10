@@ -54,11 +54,14 @@
 // monitoring signal, never an action.
 //
 // Auth (gate 1a): the dashboard cron POSTs with
-// Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>. The function compares the
-// bearer against the env value with a timing-safe byte compare (constant
-// time, no external dependency) and returns 401 on any mismatch. 405 on
-// non-POST. CORS is kept minimal (server-to-server cron) but consistent with
-// the other functions.
+// Authorization: Bearer <CRON_AUTH_KEY>. The function compares the bearer
+// against the CRON_AUTH_KEY env value with a timing-safe byte compare
+// (constant time, no external dependency) and returns 401 on any mismatch.
+// CRON_AUTH_KEY is a dedicated cron-only secret (NOT the service role key):
+// the legacy SUPABASE_SERVICE_ROLE_KEY is deprecated and rotates out of sync
+// with JWT Signing Keys, which broke bearer comparison. 405 on non-POST. CORS
+// is kept minimal (server-to-server cron) but consistent with the other
+// functions.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -102,11 +105,11 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Gate 1a: the cron must present the service_role key as a bearer token.
- * Fails closed — a missing env value, missing header, or any mismatch is 401.
+ * Gate 1a: the cron must present CRON_AUTH_KEY as a bearer token. Fails
+ * closed — a missing env value, missing header, or any mismatch is 401.
  */
 function isAuthorized(req: Request): boolean {
-  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const expected = Deno.env.get('CRON_AUTH_KEY')
   if (!expected) return false
 
   const header = req.headers.get('Authorization')
@@ -461,9 +464,9 @@ serve(async (req) => {
     })
   }
 
-  // Gate 1a: timing-safe service_role bearer check BEFORE any work.
+  // Gate 1a: timing-safe CRON_AUTH_KEY bearer check BEFORE any work.
   if (!isAuthorized(req)) {
-    console.error('expire-pending-subscriptions: unauthorized invocation (missing or invalid service_role bearer)')
+    console.error('expire-pending-subscriptions: unauthorized invocation (missing or invalid CRON_AUTH_KEY bearer)')
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

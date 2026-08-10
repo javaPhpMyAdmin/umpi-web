@@ -12,7 +12,7 @@ checkouts and unresolved conflict markers.
 | Schedule | Hourly (every hour, on the hour) |
 | Endpoint | `https://<project-ref>.supabase.co/functions/v1/expire-pending-subscriptions` |
 | Method | `POST` |
-| Auth | `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` |
+| Auth | `Authorization: Bearer <CRON_AUTH_KEY>` |
 
 ## What it does
 
@@ -24,18 +24,24 @@ modifies user profiles and never touches pending rows younger than 24 hours.
 
 ## Auth
 
-The cron must send the service role key as a bearer token:
+The cron must send the cron key as a bearer token:
 
 ```
 POST https://<project-ref>.supabase.co/functions/v1/expire-pending-subscriptions
-Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+Authorization: Bearer <CRON_AUTH_KEY>
 ```
 
-- The function compares the bearer against its `SUPABASE_SERVICE_ROLE_KEY`
-  environment value with a **timing-safe** comparison and returns `401` on any
-  mismatch, `405` on non-`POST`.
-- **`SUPABASE_SERVICE_ROLE_KEY` is a server secret. Never place it in client
-  code, browser bundles, or public repos.** It is only used server-to-server
+- The function compares the bearer against its `CRON_AUTH_KEY` environment
+  value with a **timing-safe** comparison and returns `401` on any mismatch,
+  `405` on non-`POST`.
+- `CRON_AUTH_KEY` is a **dedicated cron-only secret** (not the service role
+  key). Set it in Supabase Dashboard → Edge Functions → Secrets (or via the
+  Management API `POST /v1/projects/{ref}/secrets`). The legacy
+  `SUPABASE_SERVICE_ROLE_KEY` was deprecated by Supabase (JWT Signing Keys
+  migration) and must NOT be used for bearer comparison — its value rotates
+  out of sync with the key shown in the dashboard.
+- **`CRON_AUTH_KEY` is a server secret. Never place it in client code,
+  browser bundles, or public repos.** It is only used server-to-server
   (Supabase dashboard → edge function).
 
 ## Creating the dashboard cron (one-time ops step)
@@ -46,7 +52,7 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
 3. Open **Cron / Integrations** and create a new scheduled job:
    - Method: `POST`
    - Schedule: hourly (e.g. cron `0 * * * *`)
-   - Authorization header: `Bearer <SUPABASE_SERVICE_ROLE_KEY>`
+   - Authorization header: `Bearer <CRON_AUTH_KEY>`
 4. Save and confirm one manual run succeeds (expect HTTP 200 with a JSON body
    like `{"cancelled":0,"activated":0,"markers_cleared":0,"deferred":0}`).
 
