@@ -128,7 +128,7 @@ export default function PrivacyPage() {
         </p>
         <p className="text-text-secondary leading-relaxed">
           Por Correo Electrónico: Envía una solicitud de eliminación a
-          nuestro equipo de soporte a soporte@umpi.com.ar desde la dirección
+          nuestro equipo de soporte a info@umpi.com.ar desde la dirección
           de correo registrada en tu cuenta de UMPI.
         </p>
         <p className="text-text-secondary leading-relaxed">
