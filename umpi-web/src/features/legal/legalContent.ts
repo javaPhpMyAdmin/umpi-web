@@ -16,10 +16,10 @@
  * Bump here → also add a row to legal_consent_versions in a migration →
  * users re-gate.
  */
-export const LEGAL_VERSION = '2026-08-01'
+export const LEGAL_VERSION = '2026-08-14'
 
 /**
- * '1 de agosto de 2026' — Spanish label for LEGAL_VERSION.
+ * '14 de agosto de 2026' — Spanish label for LEGAL_VERSION.
  * Parsed from the ISO parts explicitly so it is deterministic;
  * toLocaleDateString would vary with the runtime locale.
  */

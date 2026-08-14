@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           <li>Correo electrónico.</li>
           <li>Número de teléfono.</li>
           <li>Ciudad.</li>
-          <li>Ubicación aproximada (cuando el usuario la autorice).</li>
+          <li>Ubicación (solo la ciudad que el usuario selecciona manualmente; no se recopila ubicación automática).</li>
           <li>Fotografías de publicaciones.</li>
           <li>Descripción de los avisos.</li>
           <li>Dirección IP.</li>
@@ -108,6 +108,49 @@ export default function PrivacyPage() {
         <p className="text-text-secondary leading-relaxed">
           Las solicitudes podrán realizarse mediante el correo electrónico
           oficial de soporte de UMPI.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-header-md text-header-md text-text-deep mb-2">
+          Eliminación de Cuenta y Datos Personales
+        </h2>
+        <p className="text-text-secondary leading-relaxed">
+          En UMPI, los usuarios tienen derecho a solicitar la eliminación
+          total de su cuenta y de todos sus datos asociados en cualquier
+          momento.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Cómo solicitar la eliminación de tu cuenta:
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Desde la Aplicación: Ve a Perfil &gt; Ajustes &gt; Eliminar cuenta.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Por Correo Electrónico: Envía una solicitud de eliminación a
+          nuestro equipo de soporte a soporte@umpi.com.ar desde la dirección
+          de correo registrada en tu cuenta de UMPI.
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Datos que se eliminan:
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Al procesar la solicitud, eliminaremos de forma permanente:
+        </p>
+        <ul className="list-disc pl-5 text-text-secondary leading-relaxed">
+          <li>Tu perfil de usuario (nombre, correo electrónico y datos de contacto).</li>
+          <li>Todas tus publicaciones y avisos clasificados subidos.</li>
+          <li>Tu historial de chats e imágenes asociadas.</li>
+        </ul>
+        <p className="text-text-secondary leading-relaxed">
+          Retención de datos:
+        </p>
+        <p className="text-text-secondary leading-relaxed">
+          Los datos se eliminan de manera inmediata al confirmar la
+          solicitud. Algunos registros técnicos de seguridad se conservarán
+          por un período máximo de 30 días únicamente para fines de
+          auditoría y prevención de fraudes, tras lo cual serán eliminados
+          por completo.
         </p>
       </section>
 
