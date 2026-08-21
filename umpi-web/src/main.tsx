@@ -4,12 +4,19 @@ import './index.css'
 
 /**
  * Mobile bridge shortcut: when a mobile user clicks a magic link, Supabase
- * redirects to /mobile-bridge?code=XXX. We render a tiny redirect page
+ * redirects to /mobile-bridge with auth data. We render a tiny bridge page
  * WITHOUT importing AppProviders (and therefore without the Supabase client),
- * so detectSessionInUrl never tries to exchange the PKCE code. The bridge
- * page immediately redirects to umpi://confirm-email?code=XXX.
+ * so detectSessionInUrl never tries to consume the tokens/code.
+ *
+ * Detects both formats:
+ * - PKCE:   ?code=XXX (query string)
+ * - Implicit: #access_token=... (hash fragment)
  */
-if (window.location.pathname === '/mobile-bridge' && window.location.search.includes('code=')) {
+const isMobileBridge = window.location.pathname === '/mobile-bridge'
+  && (window.location.search.includes('code=')
+      || window.location.hash.includes('access_token'))
+
+if (isMobileBridge) {
   import('./features/auth/pages/MobileBridgePage').then(({ default: MobileBridgePage }) => {
     createRoot(document.getElementById('root')!).render(<MobileBridgePage />)
   })
