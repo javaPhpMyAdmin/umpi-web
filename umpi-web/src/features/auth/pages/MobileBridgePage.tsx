@@ -69,7 +69,7 @@ export default function MobileBridgePage() {
               Tocá el botón para iniciar sesión en la aplicación.
             </p>
             <a
-              href={deepLink}
+              href={deepLink!}
               style={{
                 display: 'inline-block',
                 background: '#FF6B35',
