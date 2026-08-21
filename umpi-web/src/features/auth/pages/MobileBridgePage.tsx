@@ -3,31 +3,42 @@ import { useEffect, useState } from 'react'
 /**
  * MobileBridgePage — lightweight bridge for mobile magic link auth.
  *
- * Does NOT load the Supabase client (no detectSessionInUrl), so the PKCE
- * code is never consumed by the web. Simply shows a button that opens the
- * native app's deep link when tapped.
+ * Does NOT load the Supabase client (no detectSessionInUrl), so auth
+ * tokens/code are never consumed by the web.
  *
- * Flow:
- * 1. Mobile app calls signInWithOtp with emailRedirectTo pointing here
- * 2. User clicks magic link → browser opens this page with ?code=XXX
- * 3. Page shows "Abrir en Umpi" button
- * 4. User taps button → native app opens via umpi:// deep link
- * 5. Native app exchanges the code with its own PKCE verifier
+ * Handles two Supabase redirect formats:
+ * 1. PKCE:  ?code=XXX              → passes code to native app
+ * 2. Implicit: #access_token=...&refresh_token=... → passes tokens to native app
+ *
+ * The native app's confirm-email.tsx handles both via resolveUrl().
  */
 export default function MobileBridgePage() {
-  const [code, setCode] = useState<string | null>(null)
+  const [deepLink, setDeepLink] = useState<string | null | undefined>(undefined) // undefined = loading
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    setCode(params.get('code'))
+    const hash = window.location.hash
+
+    // 1. PKCE: ?code=XXX
+    const code = params.get('code')
+    if (code) {
+      setDeepLink(`umpi://confirm-email?code=${encodeURIComponent(code)}`)
+      return
+    }
+
+    // 2. Implicit: #access_token=...&refresh_token=...
+    if (hash && hash.includes('access_token')) {
+      const fragment = hash.substring(1) // remove #
+      setDeepLink(`umpi://confirm-email?${fragment}`)
+      return
+    }
+
+    // No auth data found
+    setDeepLink(null)
   }, [])
 
-  const deepLink = code
-    ? `umpi://confirm-email?code=${encodeURIComponent(code)}`
-    : null
-
-  if (code === null) {
-    // Still loading params
+  // Still loading
+  if (deepLink === undefined) {
     return (
       <div style={{ fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
         <div style={{ textAlign: 'center', padding: 32 }}>
@@ -39,7 +50,8 @@ export default function MobileBridgePage() {
     )
   }
 
-  if (!code || !deepLink) {
+  // Invalid link
+  if (!deepLink) {
     return (
       <div style={{ fontFamily: 'system-ui, sans-serif', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
         <div style={{ textAlign: 'center', padding: 32 }}>
