@@ -6,11 +6,15 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { supabase } from '../../../lib/supabase'
 
 /**
- * ConfirmEmailPage — handles the Magic Link callback.
+ * ConfirmEmailPage — handles the Magic Link callback (web only).
  *
- * When user clicks the magic link in their email, Supabase redirects here
+ * When a user clicks the magic link in their email, Supabase redirects here
  * with auth tokens in the URL hash. detectSessionInURL (configured in supabase.ts)
  * extracts the session automatically.
+ *
+ * Mobile users are now redirected via /mobile-bridge (see main.tsx) which
+ * renders a lightweight page outside the React/Supabase tree — no PKCE code
+ * conflict.
  *
  * This page:
  * 1. Waits for the session to be available

@@ -12,7 +12,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
   // Honeypot — bots auto-fill this, humans never see it
   const [website, setWebsite] = useState('')
   // Legal consent — required before creating the account
@@ -38,7 +38,7 @@ export default function RegisterPage() {
 
     try {
       await sendMagicLink({ email, fullName })
-      setSuccess(true)
+      setMagicLinkSent(true)
     } catch (err: any) {
       setError(err.message || 'Error al enviar el link mágico')
     }
@@ -72,19 +72,29 @@ export default function RegisterPage() {
 
         {/* Registration Card */}
         <div className="bg-surface rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] w-full max-w-md p-8 sm:p-10 relative z-10 border border-border-light/50">
-          {success ? (
-            /* ── Success state ─────────────────────────────────── */
+          {magicLinkSent ? (
+            /* ── Magic link sent state ─────────────────────── */
             <div className="text-center py-8">
               <span className="material-symbols-outlined text-[56px] text-primary-container mb-4 block">
                 mark_email_read
               </span>
-              <h1 className="font-title-lg text-title-lg text-text-deep mb-2">Revisa tu email</h1>
+              <h1 className="font-title-lg text-title-lg text-text-deep mb-2">Revisá tu email</h1>
               <p className="font-body-base text-body-base text-text-secondary mb-6">
-                Te enviamos un link mágico a <strong className="text-on-surface">{email}</strong>. Hacé clic en el link para crear tu cuenta y empezar a usar Umpi.
+                Te enviamos un link mágico a <strong className="text-on-surface">{email}</strong>. Hacé click en el link para crear tu cuenta.
               </p>
-              <p className="font-body-sm text-body-sm text-text-muted">
-                ¿No lo encontrás? Revisá la carpeta de spam.
-              </p>
+
+              {error && (
+                <div className="text-error-red text-sm text-center mb-4">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={() => { setMagicLinkSent(false); setEmail(''); setFullName(''); setError('') }}
+                className="text-primary-container font-label-bold text-[14px] hover:underline"
+              >
+                Volver al registro
+              </button>
             </div>
           ) : (
             /* ── Registration form ─────────────────────────────── */

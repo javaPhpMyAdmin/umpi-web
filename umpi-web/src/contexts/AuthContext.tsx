@@ -43,7 +43,7 @@ interface AuthContextValue {
     password: string;
     fullName: string;
   }) => Promise<void>;
-  /** Magic link — sends OTP email for passwordless login/registration */
+  /** Magic link — sends email with a sign-in link (passwordless) */
   sendMagicLink: (params: {
     email: string;
     fullName?: string;
@@ -243,7 +243,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/confirmar-email`,
           data: { full_name: fullName },
         },
       });
@@ -273,7 +272,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const { error: otpError } = await supabase.auth.signInWithOtp({
             email,
             options: {
-              emailRedirectTo: `${window.location.origin}/confirmar-email`,
               data: { full_name: fullName },
             },
           });

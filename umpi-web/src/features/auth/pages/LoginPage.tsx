@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const [authMode, setAuthMode] = useState<'password' | 'magiclink'>('password')
+  const [authMode, setAuthMode] = useState<'password' | 'magicLink'>('password')
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -30,7 +30,7 @@ export default function LoginPage() {
         console.error('Error al iniciar sesión:', error)
       }
     } else {
-      // Magic link mode
+      // Magic link mode — send email with sign-in link
       try {
         await sendMagicLink({ email })
         setMagicLinkSent(true)
@@ -54,15 +54,22 @@ export default function LoginPage() {
         {/* Auth Card */}
         <div className="bg-surface rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] w-full max-w-md p-8 sm:p-10 relative z-10 border border-border-light/50">
           {magicLinkSent ? (
-            /* ── Magic Link sent state ─────────────────────────── */
+            /* ── Magic link sent state ─────────────────────── */
             <div className="text-center py-8">
               <span className="material-symbols-outlined text-[56px] text-primary-container mb-4 block">
                 mark_email_read
               </span>
-              <h1 className="text-title-lg font-title-lg text-text-deep mb-2">Revisa tu email</h1>
+              <h1 className="text-title-lg font-title-lg text-text-deep mb-2">Revisá tu email</h1>
               <p className="text-body-base font-body-base text-text-secondary mb-6">
-                Te enviamos un link mágico a <strong className="text-on-surface">{email}</strong>. Hacé clic en el link para iniciar sesión.
+                Te enviamos un link mágico a <strong className="text-on-surface">{email}</strong>. Hacé click en el link para iniciar sesión.
               </p>
+
+              {(error || loginError) && (
+                <div className="text-error-red text-sm text-center mb-4">
+                  {error || loginError?.message}
+                </div>
+              )}
+
               <button
                 onClick={() => { setMagicLinkSent(false); setEmail(''); setError('') }}
                 className="text-primary-container font-label-bold text-[14px] hover:underline"
@@ -95,9 +102,9 @@ export default function LoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAuthMode('magiclink')}
+                  onClick={() => setAuthMode('magicLink')}
                   className={`flex-1 py-2.5 rounded-md text-[14px] font-label-bold transition-all ${
-                    authMode === 'magiclink'
+                    authMode === 'magicLink'
                       ? 'bg-surface text-on-surface shadow-sm'
                       : 'text-text-secondary hover:text-on-surface'
                   }`}
