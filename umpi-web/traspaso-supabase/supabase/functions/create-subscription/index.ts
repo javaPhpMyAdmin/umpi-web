@@ -493,7 +493,7 @@ serve(async (req) => {
         start_date: startDate,
         end_date: endDate,
         transaction_amount: Number(plan.price),
-        currency_id: 'UYU',
+        currency_id: 'ARS',
       },
       payer_email: payerEmail,
       external_reference: externalReference,
